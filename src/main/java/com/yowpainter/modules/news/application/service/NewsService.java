@@ -6,6 +6,8 @@ import com.yowpainter.modules.news.domain.model.News;
 import com.yowpainter.modules.news.domain.port.out.NewsRepositoryPort;
 import com.yowpainter.modules.news.infrastructure.adapter.in.web.dto.NewsCreateRequest;
 import com.yowpainter.modules.news.infrastructure.adapter.in.web.dto.NewsResponse;
+import com.yowpainter.shared.context.OrganizationContext;
+import com.yowpainter.shared.tenant.TenantTransactionExecutor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,7 @@ public class NewsService {
 
     private final NewsRepositoryPort newsRepository;
     private final ArtistRepositoryPort artistRepository;
+    private final TenantTransactionExecutor tenantTransactionExecutor;
 
     @Transactional
     public NewsResponse createNews(String artistEmail, NewsCreateRequest request) {
@@ -50,10 +53,19 @@ public class NewsService {
     public List<NewsResponse> getNewsByArtistSlug(String slug) {
         Artist artist = artistRepository.findBySlug(slug)
                 .orElseThrow(() -> new IllegalArgumentException("Artiste non trouve"));
-
-        return newsRepository.findByArtistIdOrderByPublishedAtDesc(artist.getId()).stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        if (artist.getOrganizationId() == null) {
+            return List.of();
+        }
+        try {
+            OrganizationContext.setOrganizationId(artist.getOrganizationId());
+            return tenantTransactionExecutor.execute(() ->
+                    newsRepository.findByArtistIdOrderByPublishedAtDesc(artist.getId()).stream()
+                            .map(this::mapToResponse)
+                            .collect(Collectors.toList())
+            );
+        } finally {
+            OrganizationContext.clear();
+        }
     }
 
     @Transactional
