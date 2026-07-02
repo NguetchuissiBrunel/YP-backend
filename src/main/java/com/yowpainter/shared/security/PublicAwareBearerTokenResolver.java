@@ -26,6 +26,9 @@ public class PublicAwareBearerTokenResolver implements BearerTokenResolver {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
+        if (!"GET".equalsIgnoreCase(request.getMethod())) {
+            return false;
+        }
         String path = request.getRequestURI();
         if (path == null) {
             return false;

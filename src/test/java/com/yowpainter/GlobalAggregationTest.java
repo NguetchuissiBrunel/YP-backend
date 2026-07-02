@@ -155,4 +155,15 @@ public class GlobalAggregationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)));
     }
+
+    @Test
+    @Order(5)
+    void shouldGetMyArtworks() throws Exception {
+        // Check my artworks for Artist A
+        mockMvc.perform(get("/api/artworks/me").header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].title").value("Art A"));
+    }
 }
+

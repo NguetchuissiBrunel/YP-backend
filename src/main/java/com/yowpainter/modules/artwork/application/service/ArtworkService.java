@@ -11,8 +11,10 @@ import com.yowpainter.modules.auth.domain.model.AppUser;
 import com.yowpainter.modules.auth.domain.port.out.AppUserRepositoryPort;
 import com.yowpainter.modules.shop.domain.port.out.ProductRepositoryPort;
 import com.yowpainter.modules.notification.application.service.NotificationService;
+import com.yowpainter.shared.context.OrganizationContext;
 import com.yowpainter.shared.context.RequestContext;
 import com.yowpainter.shared.kernel.port.KernelFilePort;
+import com.yowpainter.shared.tenant.TenantTransactionExecutor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,6 +38,17 @@ public class ArtworkService {
     private final ProductRepositoryPort productRepository;
     private final NotificationService notificationService;
     private final KernelFilePort kernelFilePort;
+    private final TenantTransactionExecutor tenantTransactionExecutor;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.core.env.Environment environment;
+
+    private boolean isTestProfile() {
+        if (environment == null) {
+            return true;
+        }
+        return java.util.Arrays.asList(environment.getActiveProfiles()).contains("test");
+    }
 
     public ArtworkImageUploadResponse uploadArtworkImage(String artistEmail, MultipartFile file) {
         Artist artist = artistRepository.findByEmail(artistEmail)
@@ -85,13 +98,39 @@ public class ArtworkService {
         return mapToResponse(artworkRepository.save(artwork));
     }
 
+    @Transactional(readOnly = true)
     public List<ArtworkResponse> getPublicArtworks() {
-        return artworkRepository.findPublicArtworks().stream()
-                .map(this::mapToResponse)
+        if (isTestProfile() || OrganizationContext.getOrganizationId() != null) {
+            return artworkRepository.findPublicArtworks().stream()
+                    .map(this::mapToResponse)
+                    .sorted(Comparator.comparing(ArtworkResponse::getPublishedAt, Comparator.nullsLast(Comparator.<LocalDateTime>reverseOrder())))
+                    .collect(Collectors.toList());
+        }
+
+        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        List<ArtworkResponse> allResponses = new ArrayList<>();
+        for (Artist artist : activeArtists) {
+            if (artist.getOrganizationId() == null) continue;
+            try {
+                OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                List<ArtworkResponse> tenantResponses = tenantTransactionExecutor.execute(() -> 
+                    artworkRepository.findPublicArtworks().stream()
+                            .map(this::mapToResponse)
+                            .collect(Collectors.toList())
+                );
+                allResponses.addAll(tenantResponses);
+            } catch (Exception e) {
+                log.error("Failed to fetch public artworks for tenant: {}", artist.getOrganizationId(), e);
+            } finally {
+                OrganizationContext.clear();
+            }
+        }
+        return allResponses.stream()
                 .sorted(Comparator.comparing(ArtworkResponse::getPublishedAt, Comparator.nullsLast(Comparator.<LocalDateTime>reverseOrder())))
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ArtworkResponse> getPublicArtworksByArtistSlug(String slug) {
         Artist artist = artistRepository.findBySlug(slug).orElseThrow(() -> new IllegalArgumentException("Artiste non trouve"));
         return artworkRepository.findPublicArtworksByArtistId(artist.getId()).stream()
@@ -99,12 +138,14 @@ public class ArtworkService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ArtworkResponse> getArtworksByArtistId(UUID artistId) {
         return artworkRepository.findByArtistId(artistId).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ArtworkResponse> getMyArtworks(String artistEmail) {
         Artist artist = artistRepository.findByEmail(artistEmail).orElseThrow(() -> new IllegalArgumentException("Artiste non trouve"));
         return artworkRepository.findByArtistId(artist.getId()).stream()
@@ -112,6 +153,7 @@ public class ArtworkService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     public ArtworkResponse getArtworkById(UUID id) {
         Artwork artwork = artworkRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Oeuvre non trouvee"));
@@ -120,12 +162,36 @@ public class ArtworkService {
         return mapToResponse(artwork);
     }
 
+    @Transactional(readOnly = true)
     public List<ArtworkResponse> searchArtworks(String query) {
-        return artworkRepository.searchPublicArtworks(query).stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        if (isTestProfile() || OrganizationContext.getOrganizationId() != null) {
+            return artworkRepository.searchPublicArtworks(query).stream()
+                    .map(this::mapToResponse)
+                    .collect(Collectors.toList());
+        }
+
+        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        List<ArtworkResponse> allResponses = new ArrayList<>();
+        for (Artist artist : activeArtists) {
+            if (artist.getOrganizationId() == null) continue;
+            try {
+                OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                List<ArtworkResponse> tenantResponses = tenantTransactionExecutor.execute(() -> 
+                    artworkRepository.searchPublicArtworks(query).stream()
+                            .map(this::mapToResponse)
+                            .collect(Collectors.toList())
+                );
+                allResponses.addAll(tenantResponses);
+            } catch (Exception e) {
+                log.error("Failed to search artworks for tenant: {}", artist.getOrganizationId(), e);
+            } finally {
+                OrganizationContext.clear();
+            }
+        }
+        return allResponses;
     }
 
+    @Transactional(readOnly = true)
     public List<ArtworkResponse> searchArtworksByArtistSlug(String slug, String query) {
         Artist artist = artistRepository.findBySlug(slug).orElseThrow(() -> new IllegalArgumentException("Artiste non trouve"));
         return artworkRepository.searchPublicArtworksByArtistId(artist.getId(), query).stream()
@@ -133,65 +199,125 @@ public class ArtworkService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ArtworkResponse> getFeaturedArtworks() {
-        return artworkRepository.findFeaturedArtworks().stream()
-                .map(this::mapToResponse)
+        if (isTestProfile() || OrganizationContext.getOrganizationId() != null) {
+            return artworkRepository.findFeaturedArtworks().stream()
+                    .map(this::mapToResponse)
+                    .sorted(Comparator.comparing(ArtworkResponse::getLikeCount).reversed())
+                    .collect(Collectors.toList());
+        }
+
+        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        List<ArtworkResponse> allResponses = new ArrayList<>();
+        for (Artist artist : activeArtists) {
+            if (artist.getOrganizationId() == null) continue;
+            try {
+                OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                List<ArtworkResponse> tenantResponses = tenantTransactionExecutor.execute(() -> 
+                    artworkRepository.findFeaturedArtworks().stream()
+                            .map(this::mapToResponse)
+                            .collect(Collectors.toList())
+                );
+                allResponses.addAll(tenantResponses);
+            } catch (Exception e) {
+                log.error("Failed to fetch featured artworks for tenant: {}", artist.getOrganizationId(), e);
+            } finally {
+                OrganizationContext.clear();
+            }
+        }
+        return allResponses.stream()
                 .sorted(Comparator.comparing(ArtworkResponse::getLikeCount).reversed())
                 .collect(Collectors.toList());
     }
 
-    @Transactional
-    public void toggleLike(UUID artworkId, String userEmail) {
-        Artwork artwork = artworkRepository.findById(artworkId)
-                .orElseThrow(() -> new IllegalArgumentException("Oeuvre non trouvee"));
-        AppUser user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouve"));
-
-        Optional<ArtworkLike> existingLike = likeRepository.findByArtworkIdAndUserId(artworkId, user.getId());
-        if (existingLike.isPresent()) {
-            likeRepository.delete(existingLike.get());
-            artwork.setLikeCount(Math.max(0, artwork.getLikeCount() - 1));
-        } else {
-            likeRepository.save(ArtworkLike.builder().artwork(artwork).user(user).build());
-            artwork.setLikeCount(artwork.getLikeCount() + 1);
-            
-            // Notification pour l'artiste
-            notificationService.createNotification(
-                artwork.getArtistId(),
-                user.getFirstName() + " a aimé votre œuvre : " + artwork.getTitle()
-            );
+    public void toggleLike(String artistSlug, UUID artworkId, String userEmail) {
+        Artist artist = artistRepository.findBySlug(artistSlug)
+                .orElseThrow(() -> new IllegalArgumentException("Artiste non trouve"));
+        if (artist.getOrganizationId() == null) {
+            throw new IllegalStateException("Organisation de l'artiste manquante");
         }
-        artworkRepository.save(artwork);
+        try {
+            OrganizationContext.setOrganizationId(artist.getOrganizationId());
+            tenantTransactionExecutor.execute(() -> {
+                Artwork artwork = artworkRepository.findById(artworkId)
+                        .orElseThrow(() -> new IllegalArgumentException("Oeuvre non trouvee"));
+                AppUser user = userRepository.findByEmail(userEmail)
+                        .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouve"));
+
+                Optional<ArtworkLike> existingLike = likeRepository.findByArtworkIdAndUserId(artworkId, user.getId());
+                if (existingLike.isPresent()) {
+                    likeRepository.delete(existingLike.get());
+                    artwork.setLikeCount(Math.max(0, artwork.getLikeCount() - 1));
+                } else {
+                    likeRepository.save(ArtworkLike.builder().artwork(artwork).user(user).build());
+                    artwork.setLikeCount(artwork.getLikeCount() + 1);
+                    
+                    // Notification pour l'artiste
+                    notificationService.createNotification(
+                        artwork.getArtistId(),
+                        user.getFirstName() + " a aimé votre œuvre : " + artwork.getTitle()
+                    );
+                }
+                artworkRepository.save(artwork);
+            });
+        } finally {
+            OrganizationContext.clear();
+        }
     }
 
-    @Transactional
-    public CommentResponse addComment(UUID artworkId, String userEmail, CommentRequest request) {
-        Artwork artwork = artworkRepository.findById(artworkId)
-                .orElseThrow(() -> new IllegalArgumentException("Oeuvre non trouvee"));
-        AppUser user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouve"));
+    public CommentResponse addComment(String artistSlug, UUID artworkId, String userEmail, CommentRequest request) {
+        Artist artist = artistRepository.findBySlug(artistSlug)
+                .orElseThrow(() -> new IllegalArgumentException("Artiste non trouve"));
+        if (artist.getOrganizationId() == null) {
+            throw new IllegalStateException("Organisation de l'artiste manquante");
+        }
+        try {
+            OrganizationContext.setOrganizationId(artist.getOrganizationId());
+            return tenantTransactionExecutor.execute(() -> {
+                Artwork artwork = artworkRepository.findById(artworkId)
+                        .orElseThrow(() -> new IllegalArgumentException("Oeuvre non trouvee"));
+                AppUser user = userRepository.findByEmail(userEmail)
+                        .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouve"));
 
-        ArtworkComment comment = ArtworkComment.builder()
-                .artwork(artwork)
-                .user(user)
-                .content(request.getContent())
-                .build();
+                ArtworkComment comment = ArtworkComment.builder()
+                        .artwork(artwork)
+                        .user(user)
+                        .content(request.getContent())
+                        .build();
 
-        comment = commentRepository.save(comment);
+                comment = commentRepository.save(comment);
 
-        // Notification pour l'artiste
-        notificationService.createNotification(
-            artwork.getArtistId(),
-            user.getFirstName() + " a commenté votre œuvre : " + artwork.getTitle()
-        );
+                // Notification pour l'artiste
+                notificationService.createNotification(
+                    artwork.getArtistId(),
+                    user.getFirstName() + " a commenté votre œuvre : " + artwork.getTitle()
+                );
 
-        return mapToCommentResponse(comment);
+                return mapToCommentResponse(comment);
+            });
+        } finally {
+            OrganizationContext.clear();
+        }
     }
 
-    public List<CommentResponse> getComments(UUID artworkId) {
-        return commentRepository.findByArtworkIdOrderByCreatedAtDesc(artworkId).stream()
-                .map(this::mapToCommentResponse)
-                .collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public List<CommentResponse> getComments(String artistSlug, UUID artworkId) {
+        Artist artist = artistRepository.findBySlug(artistSlug)
+                .orElseThrow(() -> new IllegalArgumentException("Artiste non trouve"));
+        if (artist.getOrganizationId() == null) {
+            return List.of();
+        }
+        try {
+            OrganizationContext.setOrganizationId(artist.getOrganizationId());
+            return tenantTransactionExecutor.execute(() -> 
+                commentRepository.findByArtworkIdOrderByCreatedAtDesc(artworkId).stream()
+                        .map(this::mapToCommentResponse)
+                        .collect(Collectors.toList())
+            );
+        } finally {
+            OrganizationContext.clear();
+        }
     }
 
     @Transactional
@@ -276,10 +402,81 @@ public class ArtworkService {
         artworkRepository.saveAll(artworks);
     }
 
-    public List<ArtworkStyle> getStyles() { return artworkRepository.findDistinctStyles(); }
-    public List<ArtworkTechnique> getTechniques() { return artworkRepository.findDistinctTechniques(); }
+    @Transactional(readOnly = true)
+    public List<ArtworkStyle> getStyles() {
+        if (isTestProfile() || OrganizationContext.getOrganizationId() != null) {
+            return artworkRepository.findDistinctStyles();
+        }
+
+        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        Set<ArtworkStyle> styles = new HashSet<>();
+        for (Artist artist : activeArtists) {
+            if (artist.getOrganizationId() == null) continue;
+            try {
+                OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                List<ArtworkStyle> tenantStyles = tenantTransactionExecutor.execute(() -> 
+                    artworkRepository.findDistinctStyles()
+                );
+                styles.addAll(tenantStyles);
+            } catch (Exception e) {
+                log.error("Failed to get styles for tenant: {}", artist.getOrganizationId(), e);
+            } finally {
+                OrganizationContext.clear();
+            }
+        }
+        return new ArrayList<>(styles);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ArtworkTechnique> getTechniques() {
+        if (isTestProfile() || OrganizationContext.getOrganizationId() != null) {
+            return artworkRepository.findDistinctTechniques();
+        }
+
+        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        Set<ArtworkTechnique> techniques = new HashSet<>();
+        for (Artist artist : activeArtists) {
+            if (artist.getOrganizationId() == null) continue;
+            try {
+                OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                List<ArtworkTechnique> tenantTechniques = tenantTransactionExecutor.execute(() -> 
+                    artworkRepository.findDistinctTechniques()
+                );
+                techniques.addAll(tenantTechniques);
+            } catch (Exception e) {
+                log.error("Failed to get techniques for tenant: {}", artist.getOrganizationId(), e);
+            } finally {
+                OrganizationContext.clear();
+            }
+        }
+        return new ArrayList<>(techniques);
+    }
+
+    @Transactional(readOnly = true)
     public List<String> getSuggestions(String q) { 
-        return artworkRepository.findDistinctTags().stream()
+        List<String> tags;
+        if (isTestProfile() || OrganizationContext.getOrganizationId() != null) {
+            tags = artworkRepository.findDistinctTags();
+        } else {
+            List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+            Set<String> tagsSet = new HashSet<>();
+            for (Artist artist : activeArtists) {
+                if (artist.getOrganizationId() == null) continue;
+                try {
+                    OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                    List<String> tenantTags = tenantTransactionExecutor.execute(() -> 
+                        artworkRepository.findDistinctTags()
+                    );
+                    tagsSet.addAll(tenantTags);
+                } catch (Exception e) {
+                    log.error("Failed to get suggestions for tenant: {}", artist.getOrganizationId(), e);
+                } finally {
+                    OrganizationContext.clear();
+                }
+            }
+            tags = new ArrayList<>(tagsSet);
+        }
+        return tags.stream()
                 .filter(t -> t.toLowerCase().contains(q.toLowerCase()))
                 .collect(Collectors.toList());
     }

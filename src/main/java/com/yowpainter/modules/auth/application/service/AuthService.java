@@ -117,11 +117,7 @@ public class AuthService {
                     .filter(user -> user.getRole() == UserRole.ROLE_BUYER);
             if (buyer.isPresent()) {
                 kernelBuyerRegistrationService.applyEmailConfirmedBuyer(buyer.get(), confirmed);
-                AuthResponse response = KernelAuthMapper.toAuthResponse(confirmed, null);
-                response.setFirstName(buyer.get().getFirstName());
-                response.setLastName(buyer.get().getLastName());
-                response.setRole(UserRole.ROLE_BUYER.name());
-                response.setRegistrationStatus("ACTIVE");
+                AuthResponse response = KernelAuthMapper.toAuthResponse(confirmed, buyer.get());
                 response.setMessage("E-mail verifie. Vous pouvez vous connecter.");
                 return response;
             }
@@ -141,8 +137,8 @@ public class AuthService {
                     request.getEmail(),
                     request.getPassword()
             );
-            Artist artist = syncLocalKernelLink(loginResult);
-            return KernelAuthMapper.toAuthResponse(loginResult, artist);
+            AppUser user = syncLocalUserLink(loginResult);
+            return KernelAuthMapper.toAuthResponse(loginResult, user);
         } catch (KernelClientException ex) {
             throw new IllegalArgumentException(
                     ex.getMessage() != null ? ex.getMessage() : "Email ou mot de passe invalide"
@@ -153,8 +149,8 @@ public class AuthService {
     @Transactional
     public AuthResponse refreshToken(String requestToken) {
         KernelAuthPort.KernelLoginResult refreshed = kernelAuthPort.refresh(requestToken);
-        Artist artist = syncLocalKernelLink(refreshed);
-        return KernelAuthMapper.toAuthResponse(refreshed, artist);
+        AppUser user = syncLocalUserLink(refreshed);
+        return KernelAuthMapper.toAuthResponse(refreshed, user);
     }
 
     @Transactional
@@ -168,13 +164,16 @@ public class AuthService {
         }
     }
 
-    private Artist syncLocalKernelLink(KernelAuthPort.KernelLoginResult loginResult) {
+    private AppUser syncLocalUserLink(KernelAuthPort.KernelLoginResult loginResult) {
         if (loginResult.userId() != null) {
             Optional<Artist> byKernelUser = artistRepository.findByKernelUserId(loginResult.userId());
             if (byKernelUser.isPresent()) {
                 return refreshArtistStatus(byKernelUser.get(), loginResult);
             }
-            userRepository.findByKernelUserId(loginResult.userId()).ifPresent(user -> {});
+            Optional<AppUser> byKernelUserGeneric = userRepository.findByKernelUserId(loginResult.userId());
+            if (byKernelUserGeneric.isPresent()) {
+                return byKernelUserGeneric.get();
+            }
         }
         if (loginResult.email() == null) {
             return null;
@@ -189,9 +188,12 @@ public class AuthService {
             return artist.get();
         }
 
-        userRepository.findByEmail(loginResult.email())
-                .ifPresent(user -> linkKernelUserId(user, loginResult.userId()));
-        return null;
+        Optional<AppUser> user = userRepository.findByEmail(loginResult.email())
+                .map(found -> {
+                    linkKernelUserId(found, loginResult.userId());
+                    return found;
+                });
+        return user.orElse(null);
     }
 
     private Artist refreshArtistStatus(Artist artist, KernelAuthPort.KernelLoginResult loginResult) {

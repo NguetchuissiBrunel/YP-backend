@@ -2,6 +2,7 @@ package com.yowpainter.modules.auth.application.service;
 
 import com.yowpainter.modules.artist.domain.model.Artist;
 import com.yowpainter.modules.auth.application.port.out.KernelAuthPort;
+import com.yowpainter.modules.auth.domain.model.AppUser;
 import com.yowpainter.modules.auth.infrastructure.adapter.in.web.dto.AuthResponse;
 import com.yowpainter.shared.security.KernelAuthorityMapper;
 
@@ -13,34 +14,34 @@ final class KernelAuthMapper {
     private KernelAuthMapper() {
     }
 
-    static AuthResponse toAuthResponse(KernelAuthPort.KernelLoginResult loginResult, Artist artist) {
-        UUID organizationId = resolveOrganizationId(loginResult, artist);
+    static AuthResponse toAuthResponse(KernelAuthPort.KernelLoginResult loginResult, AppUser user) {
+        UUID organizationId = resolveOrganizationId(loginResult, user instanceof Artist artist ? artist : null);
         return AuthResponse.builder()
                 .accessToken(loginResult.accessToken())
                 .refreshToken(loginResult.refreshToken())
                 .email(loginResult.email())
-                .firstName(artist != null ? artist.getFirstName() : null)
-                .lastName(artist != null ? artist.getLastName() : null)
-                .imageUrl(artist != null ? com.yowpainter.shared.utils.UrlSanitizer.sanitizeFileUrl(artist.getProfilePictureUrl()) : null)
-                .role(resolveRole(loginResult, artist))
+                .firstName(user != null ? user.getFirstName() : null)
+                .lastName(user != null ? user.getLastName() : null)
+                .imageUrl(user != null ? com.yowpainter.shared.utils.UrlSanitizer.sanitizeFileUrl(user.getProfilePictureUrl()) : null)
+                .role(resolveRole(loginResult, user))
                 .tenantId(loginResult.tenantId() != null ? loginResult.tenantId().toString() : null)
-                .artistName(artist != null ? artist.getArtistName() : null)
+                .artistName(user instanceof Artist artist ? artist.getArtistName() : null)
                 .kernelUserId(loginResult.userId())
                 .organizationId(organizationId)
                 .organizations(mapOrganizations(loginResult.organizations()))
-                .emailVerified(resolveEmailVerified(loginResult, artist))
-                .registrationStatus(artist != null ? artist.getStatus() : null)
+                .emailVerified(resolveEmailVerified(loginResult, user))
+                .registrationStatus(user instanceof Artist artist ? artist.getStatus() : (user != null ? "ACTIVE" : null))
                 .build();
     }
 
     private static Boolean resolveEmailVerified(
             KernelAuthPort.KernelLoginResult loginResult,
-            Artist artist
+            AppUser user
     ) {
         if (Boolean.TRUE.equals(loginResult.emailVerified())) {
             return true;
         }
-        if (artist != null
+        if (user instanceof Artist artist
                 && artist.getStatus() != null
                 && !"PENDING_EMAIL".equalsIgnoreCase(artist.getStatus())) {
             return true;
@@ -58,9 +59,9 @@ final class KernelAuthMapper {
         return null;
     }
 
-    private static String resolveRole(KernelAuthPort.KernelLoginResult loginResult, Artist artist) {
-        if (artist != null) {
-            return artist.getRole().name();
+    private static String resolveRole(KernelAuthPort.KernelLoginResult loginResult, AppUser user) {
+        if (user != null) {
+            return user.getRole().name();
         }
         if (loginResult.authorities() != null
                 && loginResult.authorities().stream().anyMatch(KernelAuthorityMapper::isKernelAdminAuthority)) {

@@ -12,7 +12,7 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: true
-    open-in-view: true
+    open-in-view: false
   logging:
     level:
       com.yowpainter: DEBUG
@@ -32,7 +32,7 @@ ksm:
     default-plan-code: COMMERCE
     default-currency: XAF
     signup-platform-organization-code: yow-painter
-    auto-provision-artists: false
+    auto-provision-artists: true
     system-user-email: samuelftagat@gmail.com
     system-user-password: Samuelseanpaint2*
     kafka:

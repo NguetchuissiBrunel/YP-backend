@@ -18,9 +18,11 @@ import com.yowpainter.modules.shop.infrastructure.adapter.in.web.dto.OrderItemRe
 import com.yowpainter.modules.shop.infrastructure.adapter.in.web.dto.OrderResponse;
 import com.yowpainter.modules.shop.infrastructure.adapter.in.web.dto.ProductCreateRequest;
 import com.yowpainter.modules.shop.infrastructure.adapter.in.web.dto.ProductResponse;
+import com.yowpainter.shared.context.OrganizationContext;
 import com.yowpainter.shared.context.RequestContext;
 import com.yowpainter.shared.kernel.port.KernelProductPort;
 import com.yowpainter.shared.kernel.port.KernelSalesPort;
+import com.yowpainter.shared.tenant.TenantTransactionExecutor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +44,7 @@ public class KernelCommerceService {
     private final OrderRepositoryPort orderRepository;
     private final AppUserRepositoryPort appUserRepository;
     private final KernelProperties kernelProperties;
+    private final TenantTransactionExecutor tenantTransactionExecutor;
 
     @Transactional
     public ProductResponse createProduct(String artistEmail, ProductCreateRequest request) {
@@ -95,67 +98,105 @@ public class KernelCommerceService {
         return mapToProductResponse(productRepository.save(localProduct));
     }
 
+    @Transactional(readOnly = true)
     public List<ProductResponse> getProductsByArtistSlug(String slug) {
         Artist artist = artistRepository.findBySlug(slug)
                 .orElseThrow(() -> new IllegalArgumentException("Artiste non trouve"));
-        return productRepository.findByArtistIdAndIsActiveTrue(artist.getId()).stream()
-                .map(this::mapToProductResponse)
-                .collect(Collectors.toList());
+        if (artist.getOrganizationId() == null) {
+            return List.of();
+        }
+        try {
+            OrganizationContext.setOrganizationId(artist.getOrganizationId());
+            return productRepository.findByArtistIdAndIsActiveTrue(artist.getId()).stream()
+                    .map(this::mapToProductResponse)
+                    .collect(Collectors.toList());
+        } finally {
+            OrganizationContext.clear();
+        }
     }
 
+    @Transactional(readOnly = true)
     public List<ProductResponse> getAllPublicProducts() {
-        return productRepository.findByIsActiveTrue().stream()
-                .filter(product -> product.getKernelProductId() != null)
-                .map(this::mapToProductResponse)
-                .collect(Collectors.toList());
+        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        List<ProductResponse> allProducts = new java.util.ArrayList<>();
+        for (Artist artist : activeArtists) {
+            if (artist.getOrganizationId() == null) continue;
+            try {
+                OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                List<ProductResponse> tenantProducts = tenantTransactionExecutor.execute(() -> 
+                    productRepository.findByIsActiveTrue().stream()
+                            .filter(product -> product.getKernelProductId() != null && artist.getId().equals(product.getArtistId()))
+                            .map(this::mapToProductResponse)
+                            .collect(Collectors.toList())
+                );
+                allProducts.addAll(tenantProducts);
+            } catch (Exception e) {
+                // Ignore schema issues and keep searching
+            } finally {
+                OrganizationContext.clear();
+            }
+        }
+        return allProducts;
     }
 
-    @Transactional
-    public OrderResponse placeOrder(String buyerEmail, OrderCreateRequest request) {
-        AppUser buyer = appUserRepository.findByEmail(buyerEmail)
-                .orElseThrow(() -> new IllegalArgumentException("Acheteur introuvable"));
-        Product product = productRepository.findById(request.getProductId())
-                .orElseThrow(() -> new IllegalArgumentException("Produit introuvable"));
-        if (product.getKernelProductId() == null || product.getOrganizationId() == null) {
-            throw new IllegalStateException("Produit non synchronise avec le kernel");
+    public OrderResponse placeOrder(String buyerEmail, String artistSlug, OrderCreateRequest request) {
+        Artist artist = artistRepository.findBySlug(artistSlug)
+                .orElseThrow(() -> new IllegalArgumentException("Artiste introuvable"));
+        if (artist.getOrganizationId() == null) {
+            throw new IllegalStateException("Organisation de l'artiste manquante");
         }
+        try {
+            OrganizationContext.setOrganizationId(artist.getOrganizationId());
+            return tenantTransactionExecutor.execute(() -> {
+                AppUser buyer = appUserRepository.findByEmail(buyerEmail)
+                        .orElseThrow(() -> new IllegalArgumentException("Acheteur introuvable"));
+                Product product = productRepository.findById(request.getProductId())
+                        .orElseThrow(() -> new IllegalArgumentException("Produit introuvable"));
+                if (product.getKernelProductId() == null || product.getOrganizationId() == null) {
+                    throw new IllegalStateException("Produit non synchronise avec le kernel");
+                }
 
-        String accessToken = requireAccessToken();
-        KernelSalesPort.SalesOrderView kernelOrder = kernelSalesPort.createOrder(
-                new KernelSalesPort.CreateSalesOrderCommand(
-                        product.getOrganizationId(),
-                        product.getKernelProductId(),
-                        BigDecimal.valueOf(request.getQuantity()),
-                        product.getPrice(),
-                        kernelProperties.defaultCurrency(),
-                        "YP-" + UUID.randomUUID().toString().substring(0, 8)
-                ),
-                accessToken
-        );
+                String accessToken = requireAccessToken();
+                KernelSalesPort.SalesOrderView kernelOrder = kernelSalesPort.createOrder(
+                        new KernelSalesPort.CreateSalesOrderCommand(
+                                product.getOrganizationId(),
+                                product.getKernelProductId(),
+                                BigDecimal.valueOf(request.getQuantity()),
+                                product.getPrice(),
+                                kernelProperties.defaultCurrency(),
+                                "YP-" + UUID.randomUUID().toString().substring(0, 8)
+                        ),
+                        accessToken
+                );
 
-        if (product.getStockQuantity() <= request.getQuantity() && product.getArtwork() != null) {
-            Artwork artwork = product.getArtwork();
-            artwork.setStatus(com.yowpainter.modules.artwork.domain.model.ArtworkStatus.SOLD);
-            artworkRepository.save(artwork);
+                if (product.getStockQuantity() <= request.getQuantity() && product.getArtwork() != null) {
+                    Artwork artwork = product.getArtwork();
+                    artwork.setStatus(com.yowpainter.modules.artwork.domain.model.ArtworkStatus.SOLD);
+                    artworkRepository.save(artwork);
+                }
+
+                Order order = Order.builder()
+                        .buyerId(buyer.getId())
+                        .shippingAddress(request.getShippingAddress())
+                        .status(mapKernelStatus(kernelOrder.status()))
+                        .totalAmount(kernelOrder.totalAmount() != null ? kernelOrder.totalAmount() : product.getPrice())
+                        .kernelSalesOrderId(kernelOrder.id())
+                        .organizationId(product.getOrganizationId())
+                        .build();
+                order.addItem(OrderItem.builder()
+                        .product(product)
+                        .quantity(request.getQuantity())
+                        .unitPrice(product.getPrice())
+                        .build());
+
+                return mapToOrderResponse(orderRepository.save(order));
+            });
+        } finally {
+            OrganizationContext.clear();
         }
-
-        Order order = Order.builder()
-                .buyerId(buyer.getId())
-                .shippingAddress(request.getShippingAddress())
-                .status(mapKernelStatus(kernelOrder.status()))
-                .totalAmount(kernelOrder.totalAmount() != null ? kernelOrder.totalAmount() : product.getPrice())
-                .kernelSalesOrderId(kernelOrder.id())
-                .organizationId(product.getOrganizationId())
-                .build();
-        order.addItem(OrderItem.builder()
-                .product(product)
-                .quantity(request.getQuantity())
-                .unitPrice(product.getPrice())
-                .build());
-
-        return mapToOrderResponse(orderRepository.save(order));
     }
 
+    @Transactional(readOnly = true)
     public List<OrderResponse> getMySales(String artistEmail) {
         Artist artist = artistRepository.findByEmail(artistEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Artiste introuvable"));
@@ -164,11 +205,38 @@ public class KernelCommerceService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public OrderResponse getOrderById(UUID orderId) {
-        return mapToOrderResponse(orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Commande non trouvée")));
+        if (OrganizationContext.getOrganizationId() != null) {
+            return mapToOrderResponse(orderRepository.findById(orderId)
+                    .orElseThrow(() -> new IllegalArgumentException("Commande non trouvée")));
+        }
+
+        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        for (Artist artist : activeArtists) {
+            if (artist.getOrganizationId() == null) continue;
+            try {
+                OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                java.util.Optional<OrderResponse> orderResOpt = tenantTransactionExecutor.execute(() -> {
+                    java.util.Optional<Order> orderOpt = orderRepository.findById(orderId);
+                    if (orderOpt.isPresent() && artist.getOrganizationId().equals(orderOpt.get().getOrganizationId())) {
+                        return java.util.Optional.of(mapToOrderResponse(orderOpt.get()));
+                    }
+                    return java.util.Optional.empty();
+                });
+                if (orderResOpt.isPresent()) {
+                    return orderResOpt.get();
+                }
+            } catch (Exception e) {
+                // Ignore schema issues and keep searching
+            } finally {
+                OrganizationContext.clear();
+            }
+        }
+        throw new IllegalArgumentException("Commande non trouvée");
     }
 
+    @Transactional(readOnly = true)
     public List<ProductResponse> getInventory(String artistEmail) {
         Artist artist = artistRepository.findByEmail(artistEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Artiste introuvable"));

@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.yowpainter.shared.tenant.TenantTransactionExecutor;
 
 import java.util.List;
 import java.util.Optional;
@@ -41,6 +42,7 @@ public class ArtworkServiceTest {
     @Mock private ProductRepositoryPort productRepository;
     @Mock private NotificationService notificationService;
     @Mock private KernelFilePort kernelFilePort;
+    @Mock private TenantTransactionExecutor tenantTransactionExecutor;
 
     @InjectMocks
     private ArtworkService artworkService;
@@ -51,11 +53,23 @@ public class ArtworkServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(tenantTransactionExecutor.execute(any(java.util.function.Supplier.class)))
+                .thenAnswer(invocation -> {
+                    java.util.function.Supplier<?> supplier = invocation.getArgument(0);
+                    return supplier.get();
+                });
+        lenient().doAnswer(invocation -> {
+            Runnable runnable = invocation.getArgument(0);
+            runnable.run();
+            return null;
+        }).when(tenantTransactionExecutor).execute(any(Runnable.class));
+
         artist = Artist.builder()
                 .firstName("Jean").lastName("Artiste")
                 .email("jean@example.com")
                 .artistName("Jean Studio")
                 .slug("jean-studio")
+                .organizationId(UUID.randomUUID())
                 .build();
         artist.setId(UUID.randomUUID());
 
@@ -176,11 +190,12 @@ public class ArtworkServiceTest {
     @Test
     void toggleLike_whenNotLiked_shouldAddLikeAndNotify() {
         artwork.setLikeCount(0);
+        when(artistRepository.findBySlug("jean-studio")).thenReturn(Optional.of(artist));
         when(artworkRepository.findById(artwork.getId())).thenReturn(Optional.of(artwork));
         when(userRepository.findByEmail("marie@example.com")).thenReturn(Optional.of(user));
         when(likeRepository.findByArtworkIdAndUserId(artwork.getId(), user.getId())).thenReturn(Optional.empty());
 
-        artworkService.toggleLike(artwork.getId(), "marie@example.com");
+        artworkService.toggleLike("jean-studio", artwork.getId(), "marie@example.com");
 
         assertThat(artwork.getLikeCount()).isEqualTo(1);
         verify(likeRepository).save(any(ArtworkLike.class));
@@ -193,11 +208,12 @@ public class ArtworkServiceTest {
         artwork.setLikeCount(3);
         ArtworkLike existingLike = ArtworkLike.builder().artwork(artwork).user(user).build();
 
+        when(artistRepository.findBySlug("jean-studio")).thenReturn(Optional.of(artist));
         when(artworkRepository.findById(artwork.getId())).thenReturn(Optional.of(artwork));
         when(userRepository.findByEmail("marie@example.com")).thenReturn(Optional.of(user));
         when(likeRepository.findByArtworkIdAndUserId(artwork.getId(), user.getId())).thenReturn(Optional.of(existingLike));
 
-        artworkService.toggleLike(artwork.getId(), "marie@example.com");
+        artworkService.toggleLike("jean-studio", artwork.getId(), "marie@example.com");
 
         assertThat(artwork.getLikeCount()).isEqualTo(2);
         verify(likeRepository).delete(existingLike);
@@ -209,11 +225,12 @@ public class ArtworkServiceTest {
         artwork.setLikeCount(0);
         ArtworkLike existingLike = ArtworkLike.builder().artwork(artwork).user(user).build();
 
+        when(artistRepository.findBySlug("jean-studio")).thenReturn(Optional.of(artist));
         when(artworkRepository.findById(artwork.getId())).thenReturn(Optional.of(artwork));
         when(userRepository.findByEmail("marie@example.com")).thenReturn(Optional.of(user));
         when(likeRepository.findByArtworkIdAndUserId(artwork.getId(), user.getId())).thenReturn(Optional.of(existingLike));
 
-        artworkService.toggleLike(artwork.getId(), "marie@example.com");
+        artworkService.toggleLike("jean-studio", artwork.getId(), "marie@example.com");
 
         assertThat(artwork.getLikeCount()).isEqualTo(0);
     }
@@ -227,11 +244,12 @@ public class ArtworkServiceTest {
         ArtworkComment saved = ArtworkComment.builder().artwork(artwork).user(user).content("Magnifique tableau !").build();
         saved.setId(UUID.randomUUID());
 
+        when(artistRepository.findBySlug("jean-studio")).thenReturn(Optional.of(artist));
         when(artworkRepository.findById(artwork.getId())).thenReturn(Optional.of(artwork));
         when(userRepository.findByEmail("marie@example.com")).thenReturn(Optional.of(user));
         when(commentRepository.save(any(ArtworkComment.class))).thenReturn(saved);
 
-        CommentResponse response = artworkService.addComment(artwork.getId(), "marie@example.com", request);
+        CommentResponse response = artworkService.addComment("jean-studio", artwork.getId(), "marie@example.com", request);
 
         assertThat(response).isNotNull();
         assertThat(response.getContent()).isEqualTo("Magnifique tableau !");

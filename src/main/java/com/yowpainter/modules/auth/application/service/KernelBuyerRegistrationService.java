@@ -65,11 +65,7 @@ public class KernelBuyerRegistrationService {
                     .build();
             userRepository.save(buyer);
 
-            AuthResponse response = KernelAuthMapper.toAuthResponse(signup, null);
-            response.setFirstName(request.getFirstName());
-            response.setLastName(request.getLastName());
-            response.setRole(UserRole.ROLE_BUYER.name());
-            response.setRegistrationStatus(Boolean.TRUE.equals(signup.emailVerified()) ? "ACTIVE" : "PENDING_EMAIL");
+            AuthResponse response = KernelAuthMapper.toAuthResponse(signup, buyer);
             response.setMessage(buildRegistrationMessage(signup));
             if (Boolean.FALSE.equals(signup.emailVerified())) {
                 response.setAccessToken(null);

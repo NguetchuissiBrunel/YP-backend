@@ -74,7 +74,7 @@ public class ShopController {
             @Valid @RequestBody OrderCreateRequest request) {
         String email = authenticatedUserResolver.requireEmail(authentication);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(shopService.placeOrder(email, request));
+                .body(shopService.placeOrder(email, artistSlug, request));
     }
 
     @PostMapping("/orders/{id}/checkout")

@@ -12,6 +12,8 @@ import com.yowpainter.modules.event.domain.port.out.ReservationRepositoryPort;
 import com.yowpainter.modules.event.domain.port.out.TicketRepositoryPort;
 import com.yowpainter.modules.auth.domain.model.AppUser;
 import com.yowpainter.modules.auth.domain.port.out.AppUserRepositoryPort;
+import com.yowpainter.shared.context.OrganizationContext;
+import com.yowpainter.shared.tenant.TenantTransactionExecutor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,7 @@ public class EventService {
     private final ArtistRepositoryPort artistRepository;
     private final AppUserRepositoryPort userRepository;
     private final TicketRepositoryPort ticketRepository;
+    private final TenantTransactionExecutor tenantTransactionExecutor;
 
     @Transactional
     public EventResponse createEvent(String artistEmail, EventCreateRequest request) {
@@ -55,100 +58,246 @@ public class EventService {
         return mapToResponse(eventRepository.save(event));
     }
 
+    @Transactional(readOnly = true)
     public List<EventResponse> getUpcomingEvents() {
         LocalDateTime now = LocalDateTime.now();
-        return eventRepository.findUpcomingEvents(now).stream()
-                .map(this::mapToResponse)
+        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        List<EventResponse> allEvents = new ArrayList<>();
+        for (Artist artist : activeArtists) {
+            if (artist.getOrganizationId() == null) continue;
+            try {
+                OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                List<EventResponse> tenantEvents = tenantTransactionExecutor.execute(() -> 
+                    eventRepository.findUpcomingEvents(now).stream()
+                            .filter(e -> artist.getId().equals(e.getArtistId()))
+                            .map(this::mapToResponse)
+                            .collect(Collectors.toList())
+                );
+                allEvents.addAll(tenantEvents);
+            } catch (Exception e) {
+                log.error("Failed to query upcoming events for tenant {}", artist.getOrganizationId(), e);
+            } finally {
+                OrganizationContext.clear();
+            }
+        }
+        return allEvents.stream()
                 .sorted(Comparator.comparing(EventResponse::getStartDateTime))
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<EventResponse> getEventsByArtistId(UUID artistId) {
         return eventRepository.findByArtistId(artistId).stream()
+                .filter(e -> e.getStatus() != EventStatus.CANCELLED)
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<EventResponse> getEventsByArtistSlug(String slug) {
         Artist artist = artistRepository.findBySlug(slug).orElseThrow(() -> new IllegalArgumentException("Artiste non trouve"));
-        return eventRepository.findByArtistId(artist.getId()).stream()
-                .filter(e -> e.getStatus() == EventStatus.PUBLISHED)
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        if (artist.getOrganizationId() == null) {
+            return List.of();
+        }
+        try {
+            OrganizationContext.setOrganizationId(artist.getOrganizationId());
+            return tenantTransactionExecutor.execute(() -> 
+                eventRepository.findByArtistId(artist.getId()).stream()
+                        .filter(e -> e.getStatus() == EventStatus.PUBLISHED)
+                        .map(this::mapToResponse)
+                        .collect(Collectors.toList())
+            );
+        } finally {
+            OrganizationContext.clear();
+        }
     }
 
+    @Transactional(readOnly = true)
     public List<EventResponse> getMyEvents(String artistEmail) {
         Artist artist = artistRepository.findByEmail(artistEmail).orElseThrow(() -> new IllegalArgumentException("Artiste non trouve"));
         return eventRepository.findByArtistId(artist.getId()).stream()
+                .filter(e -> e.getStatus() != EventStatus.CANCELLED)
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public EventResponse getEventById(UUID id) {
-        return mapToResponse(eventRepository.findById(id).orElseThrow());
+        if (OrganizationContext.getOrganizationId() != null) {
+            return mapToResponse(eventRepository.findById(id).orElseThrow());
+        }
+
+        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        for (Artist artist : activeArtists) {
+            if (artist.getOrganizationId() == null) continue;
+            try {
+                OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                java.util.Optional<EventResponse> eventResOpt = tenantTransactionExecutor.execute(() -> {
+                    java.util.Optional<Event> eventOpt = eventRepository.findById(id);
+                    if (eventOpt.isPresent() && artist.getId().equals(eventOpt.get().getArtistId())) {
+                        return java.util.Optional.of(mapToResponse(eventOpt.get()));
+                    }
+                    return java.util.Optional.empty();
+                });
+                if (eventResOpt.isPresent()) {
+                    return eventResOpt.get();
+                }
+            } catch (Exception e) {
+                // Keep searching
+            } finally {
+                OrganizationContext.clear();
+            }
+        }
+        throw new IllegalArgumentException("Evénement non trouvé");
     }
 
+    @Transactional(readOnly = true)
     public List<EventResponse> searchEvents(String query) {
-        return eventRepository.searchPublicEvents(query).stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        List<EventResponse> allEvents = new ArrayList<>();
+        for (Artist artist : activeArtists) {
+            if (artist.getOrganizationId() == null) continue;
+            try {
+                OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                List<EventResponse> tenantEvents = tenantTransactionExecutor.execute(() -> 
+                    eventRepository.searchPublicEvents(query).stream()
+                            .filter(e -> artist.getId().equals(e.getArtistId()))
+                            .map(this::mapToResponse)
+                            .collect(Collectors.toList())
+                );
+                allEvents.addAll(tenantEvents);
+            } catch (Exception e) {
+                // Keep searching
+            } finally {
+                OrganizationContext.clear();
+            }
+        }
+        return allEvents;
     }
 
-    @Transactional
     public ReservationResponse reserveEvent(UUID eventId, String userEmail) {
-        Event event = eventRepository.findById(eventId).orElseThrow();
-        AppUser user = userRepository.findByEmail(userEmail).orElseThrow();
-
-        if (!event.hasAvailableSeats()) {
-            throw new IllegalStateException("Plus de places disponibles");
+        UUID targetOrgId = null;
+        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        for (Artist artist : activeArtists) {
+            if (artist.getOrganizationId() == null) continue;
+            try {
+                OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                final UUID artistId = artist.getId();
+                boolean exists = tenantTransactionExecutor.execute(() -> {
+                    java.util.Optional<Event> evOpt = eventRepository.findById(eventId);
+                    return evOpt.isPresent() && artistId.equals(evOpt.get().getArtistId());
+                });
+                if (exists) {
+                    targetOrgId = artist.getOrganizationId();
+                    break;
+                }
+            } catch (Exception e) {
+                // Ignore schema issues and keep searching
+            } finally {
+                OrganizationContext.clear();
+            }
         }
 
-        boolean isFree = event.getTicketPrice().compareTo(java.math.BigDecimal.ZERO) == 0;
-
-        Reservation reservation = Reservation.builder()
-                .event(event)
-                .userId(user.getId())
-                .status(isFree ? ReservationStatus.CONFIRMED : ReservationStatus.PENDING)
-                .build();
-
-        event.setReservedCount(event.getReservedCount() + 1);
-        if (event.getMaxCapacity() > 0 && event.getReservedCount() >= event.getMaxCapacity()) {
-            event.setStatus(EventStatus.FULL);
+        if (targetOrgId == null) {
+            throw new IllegalArgumentException("Evénement introuvable");
         }
 
-        eventRepository.save(event);
-        reservation = reservationRepository.save(reservation);
+        try {
+            OrganizationContext.setOrganizationId(targetOrgId);
+            return tenantTransactionExecutor.execute(() -> {
+                Event event = eventRepository.findById(eventId).orElseThrow();
+                AppUser user = userRepository.findByEmail(userEmail).orElseThrow();
 
-        if (isFree) {
-            Ticket ticket = Ticket.builder()
-                    .reservation(reservation)
-                    .qrCodeData(UUID.randomUUID().toString())
-                    .isScanned(false)
-                    .build();
-            ticketRepository.save(ticket);
+                if (!event.hasAvailableSeats()) {
+                    throw new IllegalStateException("Plus de places disponibles");
+                }
+
+                boolean isFree = event.getTicketPrice().compareTo(java.math.BigDecimal.ZERO) == 0;
+
+                Reservation reservation = Reservation.builder()
+                        .event(event)
+                        .userId(user.getId())
+                        .status(isFree ? ReservationStatus.CONFIRMED : ReservationStatus.PENDING)
+                        .build();
+
+                event.setReservedCount(event.getReservedCount() + 1);
+                if (event.getMaxCapacity() > 0 && event.getReservedCount() >= event.getMaxCapacity()) {
+                    event.setStatus(EventStatus.FULL);
+                }
+
+                eventRepository.save(event);
+                reservation = reservationRepository.save(reservation);
+
+                if (isFree) {
+                    Ticket ticket = Ticket.builder()
+                            .reservation(reservation)
+                            .qrCodeData(UUID.randomUUID().toString())
+                            .isScanned(false)
+                            .build();
+                    ticketRepository.save(ticket);
+                }
+
+                return mapToReservationResponse(reservation);
+            });
+        } finally {
+            OrganizationContext.clear();
         }
-
-        return mapToReservationResponse(reservation);
     }
 
-    @Transactional
     public void confirmPaidReservation(UUID reservationId) {
-        Reservation reservation = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new IllegalArgumentException("Reservation non trouvée"));
-
-        if (reservation.getStatus() == ReservationStatus.CONFIRMED) {
-            return;
+        UUID targetOrgId = null;
+        if (OrganizationContext.getOrganizationId() != null) {
+            targetOrgId = OrganizationContext.getOrganizationId();
+        } else {
+            List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+            for (Artist artist : activeArtists) {
+                if (artist.getOrganizationId() == null) continue;
+                try {
+                    OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                    final UUID artistId = artist.getId();
+                    boolean exists = tenantTransactionExecutor.execute(() -> {
+                        java.util.Optional<Reservation> resOpt = reservationRepository.findById(reservationId);
+                        return resOpt.isPresent() && artistId.equals(resOpt.get().getEvent().getArtistId());
+                    });
+                    if (exists) {
+                        targetOrgId = artist.getOrganizationId();
+                        break;
+                    }
+                } catch (Exception e) {
+                    // Keep searching
+                } finally {
+                    OrganizationContext.clear();
+                }
+            }
         }
 
-        reservation.setStatus(ReservationStatus.CONFIRMED);
-        reservationRepository.save(reservation);
+        if (targetOrgId == null) {
+            throw new IllegalArgumentException("Reservation non trouvée");
+        }
 
-        Ticket ticket = Ticket.builder()
-                .reservation(reservation)
-                .qrCodeData(UUID.randomUUID().toString())
-                .isScanned(false)
-                .build();
-        ticketRepository.save(ticket);
+        try {
+            OrganizationContext.setOrganizationId(targetOrgId);
+            tenantTransactionExecutor.execute(() -> {
+                Reservation reservation = reservationRepository.findById(reservationId)
+                        .orElseThrow(() -> new IllegalArgumentException("Reservation non trouvée"));
+
+                if (reservation.getStatus() == ReservationStatus.CONFIRMED) {
+                    return;
+                }
+
+                reservation.setStatus(ReservationStatus.CONFIRMED);
+                reservationRepository.save(reservation);
+
+                Ticket ticket = Ticket.builder()
+                        .reservation(reservation)
+                        .qrCodeData(UUID.randomUUID().toString())
+                        .isScanned(false)
+                        .build();
+                ticketRepository.save(ticket);
+            });
+        } finally {
+            OrganizationContext.clear();
+        }
     }
 
     public List<ReservationResponse> getEventReservations(UUID eventId, String artistEmail) {
@@ -161,10 +310,36 @@ public class EventService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public ReservationResponse getReservationById(UUID reservationId) {
-        Reservation res = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new IllegalArgumentException("Reservation non trouvée"));
-        return mapToReservationResponse(res);
+        if (OrganizationContext.getOrganizationId() != null) {
+            Reservation res = reservationRepository.findById(reservationId)
+                    .orElseThrow(() -> new IllegalArgumentException("Reservation non trouvée"));
+            return mapToReservationResponse(res);
+        }
+
+        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        for (Artist artist : activeArtists) {
+            if (artist.getOrganizationId() == null) continue;
+            try {
+                OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                java.util.Optional<ReservationResponse> resOpt = tenantTransactionExecutor.execute(() -> {
+                    java.util.Optional<Reservation> rOpt = reservationRepository.findById(reservationId);
+                    if (rOpt.isPresent() && artist.getId().equals(rOpt.get().getEvent().getArtistId())) {
+                        return java.util.Optional.of(mapToReservationResponse(rOpt.get()));
+                    }
+                    return java.util.Optional.empty();
+                });
+                if (resOpt.isPresent()) {
+                    return resOpt.get();
+                }
+            } catch (Exception e) {
+                // Keep searching
+            } finally {
+                OrganizationContext.clear();
+            }
+        }
+        throw new IllegalArgumentException("Reservation non trouvée");
     }
 
     @Transactional
@@ -231,8 +406,25 @@ public class EventService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<String> getLocations() {
-        return eventRepository.findDistinctLocations();
+        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        java.util.Set<String> locations = new java.util.HashSet<>();
+        for (Artist artist : activeArtists) {
+            if (artist.getOrganizationId() == null) continue;
+            try {
+                OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                List<String> tenantLocations = tenantTransactionExecutor.execute(() -> 
+                    eventRepository.findDistinctLocations()
+                );
+                locations.addAll(tenantLocations);
+            } catch (Exception e) {
+                // Ignore and keep searching
+            } finally {
+                OrganizationContext.clear();
+            }
+        }
+        return new ArrayList<>(locations);
     }
 
     private EventResponse mapToResponse(Event event) {

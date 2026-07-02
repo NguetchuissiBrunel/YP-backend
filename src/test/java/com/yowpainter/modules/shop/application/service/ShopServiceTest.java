@@ -9,12 +9,14 @@ import com.yowpainter.modules.shop.domain.port.out.OrderRepositoryPort;
 import com.yowpainter.modules.shop.domain.port.out.ProductRepositoryPort;
 import com.yowpainter.shared.kernel.port.KernelSalesPort;
 import com.yowpainter.modules.shop.infrastructure.adapter.in.web.dto.*;
+import com.yowpainter.modules.artist.domain.model.Artist;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.yowpainter.shared.tenant.TenantTransactionExecutor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -35,6 +37,8 @@ public class ShopServiceTest {
     @Mock private AppUserRepositoryPort appUserRepository;
     @Mock private KernelCommerceService kernelCommerceService;
     @Mock private KernelSalesPort kernelSalesPort;
+    @Mock private com.yowpainter.modules.artist.domain.port.out.ArtistRepositoryPort artistRepository;
+    @Mock private TenantTransactionExecutor tenantTransactionExecutor;
 
     @InjectMocks
     private ShopService shopService;
@@ -46,6 +50,17 @@ public class ShopServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(tenantTransactionExecutor.execute(any(java.util.function.Supplier.class)))
+                .thenAnswer(invocation -> {
+                    java.util.function.Supplier<?> supplier = invocation.getArgument(0);
+                    return supplier.get();
+                });
+        lenient().doAnswer(invocation -> {
+            Runnable runnable = invocation.getArgument(0);
+            runnable.run();
+            return null;
+        }).when(tenantTransactionExecutor).execute(any(Runnable.class));
+
         buyer = AppUser.builder()
                 .firstName("Marie").lastName("Dupont")
                 .email("marie@example.com")
@@ -107,6 +122,12 @@ public class ShopServiceTest {
 
     @Test
     void getMyPurchases_shouldReturnBuyerOrders() {
+        Artist activeArtist = Artist.builder()
+                .slug("jean-studio")
+                .organizationId(UUID.randomUUID())
+                .status("ACTIVE")
+                .build();
+        when(artistRepository.findByStatus("ACTIVE")).thenReturn(List.of(activeArtist));
         when(appUserRepository.findByEmail("marie@example.com")).thenReturn(Optional.of(buyer));
         when(orderRepository.findByBuyerIdOrderByCreatedAtDesc(buyer.getId())).thenReturn(List.of(order));
         when(appUserRepository.findById(buyer.getId())).thenReturn(Optional.of(buyer));

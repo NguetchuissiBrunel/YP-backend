@@ -65,7 +65,7 @@ public class KernelAdminRegistrationService {
                     .build();
             userRepository.save(admin);
 
-            return KernelAuthMapper.toAuthResponse(loginResult, null);
+            return KernelAuthMapper.toAuthResponse(loginResult, admin);
         } catch (KernelClientException ex) {
             throw new IllegalArgumentException(
                     ex.getMessage() != null ? ex.getMessage() : "Echec inscription administrateur via le kernel"

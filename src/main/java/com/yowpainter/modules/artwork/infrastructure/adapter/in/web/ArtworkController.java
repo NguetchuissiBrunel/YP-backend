@@ -111,7 +111,7 @@ public class ArtworkController {
             @PathVariable String artistSlug,
             @PathVariable UUID id,
             Authentication authentication) {
-        artworkService.toggleLike(id, authenticatedUserResolver.requireEmail(authentication));
+        artworkService.toggleLike(artistSlug, id, authenticatedUserResolver.requireEmail(authentication));
         return ResponseEntity.ok().build();
     }
 
@@ -124,6 +124,7 @@ public class ArtworkController {
             Authentication authentication,
             @RequestBody CommentRequest request) {
         return ResponseEntity.ok(artworkService.addComment(
+                artistSlug,
                 id,
                 authenticatedUserResolver.requireEmail(authentication),
                 request
@@ -136,7 +137,7 @@ public class ArtworkController {
     public ResponseEntity<List<CommentResponse>> getComments(
             @PathVariable String artistSlug,
             @PathVariable UUID id) {
-        return ResponseEntity.ok(artworkService.getComments(id));
+        return ResponseEntity.ok(artworkService.getComments(artistSlug, id));
     }
 
     @PutMapping("/artworks/{id}")

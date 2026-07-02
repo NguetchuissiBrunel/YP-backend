@@ -7,8 +7,12 @@ import com.yowpainter.modules.shop.infrastructure.adapter.in.web.dto.*;
 import com.yowpainter.modules.shop.domain.model.*;
 import com.yowpainter.modules.shop.domain.port.out.OrderRepositoryPort;
 import com.yowpainter.modules.shop.domain.port.out.ProductRepositoryPort;
+import com.yowpainter.modules.artist.domain.model.Artist;
+import com.yowpainter.modules.artist.domain.port.out.ArtistRepositoryPort;
+import com.yowpainter.shared.context.OrganizationContext;
 import com.yowpainter.shared.context.RequestContext;
 import com.yowpainter.shared.kernel.port.KernelSalesPort;
+import com.yowpainter.shared.tenant.TenantTransactionExecutor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,11 +33,14 @@ public class ShopService {
     private final AppUserRepositoryPort appUserRepository;
     private final KernelCommerceService kernelCommerceService;
     private final KernelSalesPort kernelSalesPort;
+    private final ArtistRepositoryPort artistRepository;
+    private final TenantTransactionExecutor tenantTransactionExecutor;
 
     public ProductResponse createProduct(String artistEmail, ProductCreateRequest request) {
         return kernelCommerceService.createProduct(artistEmail, request);
     }
 
+    @Transactional(readOnly = true)
     public List<ProductResponse> getProductsByArtist(UUID artistId) {
         if (artistId == null) {
             return productRepository.findAll().stream()
@@ -46,26 +53,47 @@ public class ShopService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ProductResponse> getProductsByArtistSlug(String slug) {
         return kernelCommerceService.getProductsByArtistSlug(slug);
     }
 
+    @Transactional(readOnly = true)
     public List<ProductResponse> getAllPublicProducts() {
         return kernelCommerceService.getAllPublicProducts();
     }
 
-    public OrderResponse placeOrder(String buyerEmail, OrderCreateRequest request) {
-        return kernelCommerceService.placeOrder(buyerEmail, request);
+    public OrderResponse placeOrder(String buyerEmail, String artistSlug, OrderCreateRequest request) {
+        return kernelCommerceService.placeOrder(buyerEmail, artistSlug, request);
     }
 
     public List<OrderResponse> getMySales(String artistEmail) {
         return kernelCommerceService.getMySales(artistEmail);
     }
 
+    @Transactional(readOnly = true)
     public List<OrderResponse> getMyPurchases(String buyerEmail) {
         AppUser buyer = appUserRepository.findByEmail(buyerEmail).orElseThrow();
-        return orderRepository.findByBuyerIdOrderByCreatedAtDesc(buyer.getId()).stream()
-                .map(this::mapToOrderResponse).collect(Collectors.toList());
+        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        List<OrderResponse> allPurchases = new java.util.ArrayList<>();
+        for (Artist artist : activeArtists) {
+            if (artist.getOrganizationId() == null) continue;
+            try {
+                OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                List<OrderResponse> tenantPurchases = tenantTransactionExecutor.execute(() -> 
+                    orderRepository.findByBuyerIdOrderByCreatedAtDesc(buyer.getId()).stream()
+                            .map(this::mapToOrderResponse)
+                            .collect(Collectors.toList())
+                );
+                allPurchases.addAll(tenantPurchases);
+            } catch (Exception e) {
+                log.error("Failed to fetch purchases for tenant: {}", artist.getOrganizationId(), e);
+            } finally {
+                OrganizationContext.clear();
+            }
+        }
+        allPurchases.sort((o1, o2) -> o2.getCreatedAt().compareTo(o1.getCreatedAt()));
+        return allPurchases;
     }
 
     @Transactional
@@ -82,10 +110,12 @@ public class ShopService {
         }
     }
 
+    @Transactional(readOnly = true)
     public OrderResponse getOrderById(UUID orderId) {
         return kernelCommerceService.getOrderById(orderId);
     }
 
+    @Transactional(readOnly = true)
     public List<ProductResponse> getInventory(String artistEmail) {
         return kernelCommerceService.getInventory(artistEmail);
     }

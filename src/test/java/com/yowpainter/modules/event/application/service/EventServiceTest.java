@@ -17,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.PlatformTransactionManager;
+import com.yowpainter.shared.tenant.TenantTransactionExecutor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -51,6 +52,9 @@ public class EventServiceTest {
     @Mock
     private PlatformTransactionManager transactionManager;
 
+    @Mock
+    private TenantTransactionExecutor tenantTransactionExecutor;
+
     @InjectMocks
     private EventService eventService;
 
@@ -62,11 +66,23 @@ public class EventServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(tenantTransactionExecutor.execute(any(java.util.function.Supplier.class)))
+                .thenAnswer(invocation -> {
+                    java.util.function.Supplier<?> supplier = invocation.getArgument(0);
+                    return supplier.get();
+                });
+        lenient().doAnswer(invocation -> {
+            Runnable runnable = invocation.getArgument(0);
+            runnable.run();
+            return null;
+        }).when(tenantTransactionExecutor).execute(any(Runnable.class));
+
         artist = Artist.builder()
                 .firstName("John")
                 .lastName("Doe")
                 .email("john.doe@example.com")
                 .slug("john-doe")
+                .organizationId(UUID.randomUUID())
                 .build();
         artist.setId(UUID.randomUUID());
 
@@ -168,6 +184,7 @@ public class EventServiceTest {
     @Test
     void getEventById_shouldReturnResponse() {
         UUID eventId = event.getId();
+        when(artistRepository.findByStatus("ACTIVE")).thenReturn(List.of(artist));
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
 
         EventResponse response = eventService.getEventById(eventId);
@@ -182,6 +199,7 @@ public class EventServiceTest {
         event.setMaxCapacity(10);
         event.setReservedCount(0);
 
+        when(artistRepository.findByStatus("ACTIVE")).thenReturn(List.of(artist));
         when(eventRepository.findById(event.getId())).thenReturn(Optional.of(event));
         when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
         when(eventRepository.save(any(Event.class))).thenReturn(event);
@@ -207,6 +225,7 @@ public class EventServiceTest {
         event.setMaxCapacity(10);
         event.setReservedCount(0);
 
+        when(artistRepository.findByStatus("ACTIVE")).thenReturn(List.of(artist));
         when(eventRepository.findById(event.getId())).thenReturn(Optional.of(event));
         when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
         when(eventRepository.save(any(Event.class))).thenReturn(event);
@@ -231,6 +250,7 @@ public class EventServiceTest {
         event.setMaxCapacity(1);
         event.setReservedCount(1);
 
+        when(artistRepository.findByStatus("ACTIVE")).thenReturn(List.of(artist));
         when(eventRepository.findById(event.getId())).thenReturn(Optional.of(event));
         when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
 
@@ -245,6 +265,7 @@ public class EventServiceTest {
     void confirmPaidReservation_shouldUpdateStatusAndCreateTicket() {
         reservation.setStatus(ReservationStatus.PENDING);
 
+        when(artistRepository.findByStatus("ACTIVE")).thenReturn(List.of(artist));
         when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
 
         eventService.confirmPaidReservation(reservation.getId());
@@ -258,6 +279,7 @@ public class EventServiceTest {
     void confirmPaidReservation_whenAlreadyConfirmed_shouldDoNothing() {
         reservation.setStatus(ReservationStatus.CONFIRMED);
 
+        when(artistRepository.findByStatus("ACTIVE")).thenReturn(List.of(artist));
         when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
 
         eventService.confirmPaidReservation(reservation.getId());
@@ -279,6 +301,7 @@ public class EventServiceTest {
 
     @Test
     void getReservationById_shouldReturnResponse() {
+        when(artistRepository.findByStatus("ACTIVE")).thenReturn(List.of(artist));
         when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
 
         ReservationResponse result = eventService.getReservationById(reservation.getId());
@@ -372,10 +395,11 @@ public class EventServiceTest {
 
     @Test
     void getLocations_shouldReturnLocations() {
+        when(artistRepository.findByStatus("ACTIVE")).thenReturn(List.of(artist));
         when(eventRepository.findDistinctLocations()).thenReturn(List.of("Paris", "Lyon"));
 
         List<String> result = eventService.getLocations();
 
-        assertThat(result).containsExactly("Paris", "Lyon");
+        assertThat(result).containsExactlyInAnyOrder("Paris", "Lyon");
     }
 }
