@@ -392,6 +392,18 @@ public class TestKernelConfiguration {
                         "attachment; filename=\"mock.txt\""
                 );
             }
+
+            @Override
+            public DownloadStreamView downloadStream(UUID fileId, org.springframework.http.HttpHeaders clientHeaders, String accessToken) {
+                org.springframework.http.HttpHeaders responseHeaders = new org.springframework.http.HttpHeaders();
+                responseHeaders.setContentType(org.springframework.http.MediaType.TEXT_PLAIN);
+                responseHeaders.setContentDisposition(org.springframework.http.ContentDisposition.attachment().filename("mock.txt").build());
+                return new DownloadStreamView(
+                        new org.springframework.core.io.ByteArrayResource("mock-file-content".getBytes(StandardCharsets.UTF_8)),
+                        org.springframework.http.HttpStatus.OK,
+                        responseHeaders
+                );
+            }
         };
     }
 }

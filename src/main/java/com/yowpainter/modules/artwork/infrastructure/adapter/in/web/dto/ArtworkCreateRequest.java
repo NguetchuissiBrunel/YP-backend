@@ -36,4 +36,6 @@ public class ArtworkCreateRequest {
     // Dans un vrai flow on upload les images d'abord et on envoie les URLs ici, 
     // ou on envoie les images en multipart. Ici on simule l'envoi d'URLs existantes.
     private List<String> imageUrls;
+
+    private List<String> videoUrls;
 }

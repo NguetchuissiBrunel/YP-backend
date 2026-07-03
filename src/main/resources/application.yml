@@ -8,10 +8,12 @@ spring:
   application:
     name: yowpainter-api
 
+
+
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 12MB
+      max-file-size: 100MB
+      max-request-size: 100MB
 
   datasource:
     url: ${SPRING_DATASOURCE_URL}
@@ -114,6 +116,13 @@ ksm:
 
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
+
+  artwork:
+    video:
+      max-size: 52428800
+      allowed-formats: mp4,mov,webm,ogg
+      allowed-mime-types: video/mp4,video/quicktime,video/webm,video/ogg
+      max-count: 3
 
   payment:
     campay:

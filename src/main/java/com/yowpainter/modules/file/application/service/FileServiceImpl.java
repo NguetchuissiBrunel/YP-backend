@@ -72,4 +72,12 @@ public class FileServiceImpl implements FileService {
         }
         return kernelFilePort.download(fileId, accessToken);
     }
+
+    @Override
+    public KernelFilePort.DownloadStreamView downloadFileStream(UUID fileId, org.springframework.http.HttpHeaders clientHeaders, String accessToken) {
+        if (fileId == null) {
+            throw new IllegalArgumentException("L'identifiant du fichier (fileId) est requis");
+        }
+        return kernelFilePort.downloadStream(fileId, clientHeaders, accessToken);
+    }
 }

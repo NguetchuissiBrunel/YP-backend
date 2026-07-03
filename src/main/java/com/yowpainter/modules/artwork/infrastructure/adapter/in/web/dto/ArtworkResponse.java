@@ -26,6 +26,7 @@ public class ArtworkResponse {
     private int viewCount;
     private int likeCount;
     private List<String> imageUrls;
+    private List<String> videoUrls;
     private LocalDateTime publishedAt;
     private LocalDateTime createdAt;
 }

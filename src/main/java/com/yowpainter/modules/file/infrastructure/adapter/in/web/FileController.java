@@ -36,28 +36,25 @@ public class FileController {
     }
 
     @GetMapping("/{fileId}")
-    @Operation(summary = "Telecharger un fichier (BFF)")
-    public ResponseEntity<byte[]> downloadFile(
+    @Operation(summary = "Telecharger/Diffuser un fichier (BFF)")
+    public ResponseEntity<org.springframework.core.io.Resource> downloadFile(
             Authentication authentication,
-            @PathVariable("fileId") UUID fileId) {
+            @PathVariable("fileId") UUID fileId,
+            @RequestHeader org.springframework.http.HttpHeaders clientHeaders) {
         String accessToken = KernelAccessTokenResolver.resolveAccessToken(authentication);
-        KernelFilePort.DownloadFileView fileView = fileService.downloadFile(fileId, accessToken);
+        KernelFilePort.DownloadStreamView streamView = fileService.downloadFileStream(fileId, clientHeaders, accessToken);
 
         HttpHeaders headers = new HttpHeaders();
-        if (fileView.contentType() != null) {
-            headers.setContentType(MediaType.parseMediaType(fileView.contentType()));
-        } else {
-            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-        }
-        if (fileView.contentDisposition() != null) {
-            headers.set(HttpHeaders.CONTENT_DISPOSITION, fileView.contentDisposition());
-        }
-        if (fileView.content() != null) {
-            headers.setContentLength(fileView.content().length);
-        }
+        streamView.headers().forEach((name, values) -> {
+            if (!name.equalsIgnoreCase(HttpHeaders.TRANSFER_ENCODING) &&
+                !name.equalsIgnoreCase(HttpHeaders.CONNECTION) &&
+                !name.equalsIgnoreCase(HttpHeaders.HOST)) {
+                headers.put(name, values);
+            }
+        });
 
-        return ResponseEntity.ok()
+        return ResponseEntity.status(streamView.statusCode())
                 .headers(headers)
-                .body(fileView.content());
+                .body(streamView.resource());
     }
 }

@@ -170,6 +170,27 @@ public class KernelHttpClient {
         return withAccessToken(accessToken, () -> download(path, organizationId));
     }
 
+    public ResponseEntity<org.springframework.core.io.Resource> downloadStream(String path, org.springframework.http.HttpHeaders clientHeaders, UUID organizationId) {
+        logRequest("GET", path, null, organizationId);
+        return restClient.get()
+                .uri(path)
+                .headers(headers -> {
+                    applyServerHeaders(headers, organizationId);
+                    if (clientHeaders != null && clientHeaders.getFirst(org.springframework.http.HttpHeaders.RANGE) != null) {
+                        headers.set(org.springframework.http.HttpHeaders.RANGE, clientHeaders.getFirst(org.springframework.http.HttpHeaders.RANGE));
+                    }
+                })
+                .retrieve()
+                .onStatus(status -> status.isError(), (request, clientResponse) -> {
+                    throw toKernelException(path, clientResponse);
+                })
+                .toEntity(org.springframework.core.io.Resource.class);
+    }
+
+    public ResponseEntity<org.springframework.core.io.Resource> downloadStream(String path, org.springframework.http.HttpHeaders clientHeaders, UUID organizationId, String accessToken) {
+        return withAccessToken(accessToken, () -> downloadStream(path, clientHeaders, organizationId));
+    }
+
 
     public void postVoid(String path, Object body, UUID organizationId) {
         logRequest("POST", path, body, organizationId);

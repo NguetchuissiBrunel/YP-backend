@@ -21,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
 import com.yowpainter.modules.artwork.infrastructure.adapter.in.web.dto.ArtworkImageUploadResponse;
+import com.yowpainter.modules.artwork.infrastructure.adapter.in.web.dto.ArtworkVideoUploadResponse;
 
 import java.util.List;
 import java.util.UUID;
@@ -63,6 +64,19 @@ public class ArtworkController {
             @RequestParam("file") MultipartFile file) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(artworkService.uploadArtworkImage(
+                        authenticatedUserResolver.requireEmail(authentication),
+                        file
+                ));
+    }
+
+    @PostMapping(value = "/artworks/videos/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ARTIST')")
+    @Operation(summary = "Uploader une vidéo d'oeuvre via le kernel")
+    public ResponseEntity<ArtworkVideoUploadResponse> uploadArtworkVideo(
+            Authentication authentication,
+            @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(artworkService.uploadArtworkVideo(
                         authenticatedUserResolver.requireEmail(authentication),
                         file
                 ));

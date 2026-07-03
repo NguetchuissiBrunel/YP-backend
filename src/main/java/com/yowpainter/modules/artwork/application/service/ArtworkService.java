@@ -43,6 +43,18 @@ public class ArtworkService {
     @org.springframework.beans.factory.annotation.Autowired
     private org.springframework.core.env.Environment environment;
 
+    @org.springframework.beans.factory.annotation.Value("${app.artwork.video.max-size:52428800}")
+    private long maxVideoSize;
+
+    @org.springframework.beans.factory.annotation.Value("${app.artwork.video.allowed-formats:mp4,mov,webm,ogg}")
+    private String allowedVideoFormats;
+
+    @org.springframework.beans.factory.annotation.Value("${app.artwork.video.allowed-mime-types:video/mp4,video/quicktime,video/webm,video/ogg}")
+    private String allowedVideoMimeTypes;
+
+    @org.springframework.beans.factory.annotation.Value("${app.artwork.video.max-count:3}")
+    private int maxVideoCount;
+
     private boolean isTestProfile() {
         if (environment == null) {
             return true;
@@ -76,6 +88,59 @@ public class ArtworkService {
         }
     }
 
+    public ArtworkVideoUploadResponse uploadArtworkVideo(String artistEmail, MultipartFile file) {
+        Artist artist = artistRepository.findByEmail(artistEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Artiste introuvable"));
+        if (artist.getOrganizationId() == null) {
+            throw new IllegalStateException("Organisation kernel manquante pour cet artiste");
+        }
+
+        // 1. Validation de la taille
+        if (file.getSize() > maxVideoSize) {
+            throw new IllegalArgumentException("La taille de la vidéo dépasse la limite autorisée de " + (maxVideoSize / 1024 / 1024) + " Mo");
+        }
+
+        // 2. Validation de l'extension
+        String filename = file.getOriginalFilename();
+        if (filename == null || !filename.contains(".")) {
+            throw new IllegalArgumentException("Format de fichier vidéo invalide");
+        }
+        String extension = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
+        List<String> allowedFormatsList = Arrays.asList(allowedVideoFormats.split(","));
+        if (!allowedFormatsList.contains(extension)) {
+            throw new IllegalArgumentException("Format vidéo non supporté. Formats autorisés : " + allowedVideoFormats);
+        }
+
+        // 3. Validation du type MIME
+        String contentType = file.getContentType();
+        if (contentType == null) {
+            throw new IllegalArgumentException("Type MIME vidéo manquant");
+        }
+        List<String> allowedMimeTypesList = Arrays.asList(allowedVideoMimeTypes.split(","));
+        if (!allowedMimeTypesList.contains(contentType.toLowerCase())) {
+            throw new IllegalArgumentException("Type MIME non supporté : " + contentType);
+        }
+
+        try {
+            KernelFilePort.FileView uploaded = kernelFilePort.upload(
+                    new KernelFilePort.UploadFileCommand(
+                            artist.getOrganizationId(),
+                            file.getBytes(),
+                            filename,
+                            contentType,
+                            "ARTWORK_VIDEO"
+                    ),
+                    RequestContext.accessToken()
+            );
+            return ArtworkVideoUploadResponse.builder()
+                    .fileId(uploaded.id())
+                    .videoUrl(com.yowpainter.shared.utils.UrlSanitizer.sanitizeFileUrl(uploaded.downloadUrl()))
+                    .build();
+        } catch (java.io.IOException ex) {
+            throw new IllegalStateException("Impossible de lire le fichier vidéo", ex);
+        }
+    }
+
     @Transactional
     public ArtworkResponse createArtwork(String artistEmail, ArtworkCreateRequest request) {
         Artist artist = artistRepository.findByEmail(artistEmail)
@@ -95,6 +160,7 @@ public class ArtworkService {
                 .build();
 
         addImagesToArtwork(artwork, request.getImageUrls());
+        addVideosToArtwork(artwork, request.getVideoUrls());
         return mapToResponse(artworkRepository.save(artwork));
     }
 
@@ -338,6 +404,9 @@ public class ArtworkService {
         artwork.setDimensions(request.getDimensions());
         artwork.setTags(request.getTags());
 
+        addImagesToArtwork(artwork, request.getImageUrls());
+        addVideosToArtwork(artwork, request.getVideoUrls());
+
         return mapToResponse(artworkRepository.save(artwork));
     }
 
@@ -493,6 +562,20 @@ public class ArtworkService {
         }
     }
 
+    private void addVideosToArtwork(Artwork artwork, List<String> videoUrls) {
+        if (videoUrls == null) return;
+        if (videoUrls.size() > maxVideoCount) {
+            throw new IllegalArgumentException("Le nombre maximal de vidéos par œuvre est de " + maxVideoCount);
+        }
+        artwork.getVideos().clear();
+        for (int i = 0; i < videoUrls.size(); i++) {
+            artwork.addVideo(ArtworkVideo.builder()
+                    .videoUrl(videoUrls.get(i))
+                    .sortOrder(i)
+                    .build());
+        }
+    }
+
     private ArtworkResponse mapToResponse(Artwork artwork) {
         String artistName = artistRepository.findById(artwork.getArtistId())
                 .map(Artist::getArtistName)
@@ -513,6 +596,9 @@ public class ArtworkService {
                 .likeCount(artwork.getLikeCount())
                 .imageUrls(artwork.getImages().stream()
                         .map(img -> com.yowpainter.shared.utils.UrlSanitizer.sanitizeFileUrl(img.getImageUrl()))
+                        .collect(Collectors.toList()))
+                .videoUrls(artwork.getVideos().stream()
+                        .map(vid -> com.yowpainter.shared.utils.UrlSanitizer.sanitizeFileUrl(vid.getVideoUrl()))
                         .collect(Collectors.toList()))
                 .publishedAt(artwork.getPublishedAt())
                 .createdAt(artwork.getCreatedAt())

@@ -8,6 +8,8 @@ public interface KernelFilePort {
 
     DownloadFileView download(UUID fileId, String accessToken);
 
+    DownloadStreamView downloadStream(UUID fileId, org.springframework.http.HttpHeaders clientHeaders, String accessToken);
+
     record UploadFileCommand(
             UUID organizationId,
             byte[] content,
@@ -29,6 +31,13 @@ public interface KernelFilePort {
             byte[] content,
             String contentType,
             String contentDisposition
+    ) {
+    }
+
+    record DownloadStreamView(
+            org.springframework.core.io.Resource resource,
+            org.springframework.http.HttpStatusCode statusCode,
+            org.springframework.http.HttpHeaders headers
     ) {
     }
 }

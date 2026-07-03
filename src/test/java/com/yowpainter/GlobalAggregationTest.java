@@ -165,5 +165,87 @@ public class GlobalAggregationTest {
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].title").value("Art A"));
     }
+
+    @Test
+    @Order(6)
+    void shouldUpdateArtworkWithImages() throws Exception {
+        // Create an artwork for A with 1 image
+        ArtworkCreateRequest art = ArtworkCreateRequest.builder()
+                .title("Artwork Original")
+                .technique(ArtworkTechnique.OIL)
+                .style(ArtworkStyle.ABSTRACT)
+                .imageUrls(List.of("/api/files/img_original.jpg"))
+                .build();
+        MvcResult res = mockMvc.perform(post("/api/artworks")
+                .header("Authorization", "Bearer " + tokenA)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(art)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String artworkId = JsonPath.read(res.getResponse().getContentAsString(), "$.id");
+
+        // Update the artwork with 2 new images
+        ArtworkCreateRequest updateRequest = ArtworkCreateRequest.builder()
+                .title("Artwork Mis a jour")
+                .technique(ArtworkTechnique.OIL)
+                .style(ArtworkStyle.ABSTRACT)
+                .imageUrls(List.of("/api/files/img1.jpg", "/api/files/img2.jpg"))
+                .build();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/artworks/" + artworkId)
+                .header("Authorization", "Bearer " + tokenA)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Artwork Mis a jour"))
+                .andExpect(jsonPath("$.imageUrls", hasSize(2)))
+                .andExpect(jsonPath("$.imageUrls[0]").value("/api/files/img1.jpg"))
+                .andExpect(jsonPath("$.imageUrls[1]").value("/api/files/img2.jpg"));
+    }
+
+    @Test
+    @Order(7)
+    void shouldCreateAndUpdateArtworkWithVideos() throws Exception {
+        // Create an artwork for A with videos and images
+        ArtworkCreateRequest art = ArtworkCreateRequest.builder()
+                .title("Artwork avec Videos")
+                .technique(ArtworkTechnique.OIL)
+                .style(ArtworkStyle.ABSTRACT)
+                .imageUrls(List.of("/api/files/img_v.jpg"))
+                .videoUrls(List.of("/api/files/vid_v.mp4"))
+                .build();
+        MvcResult res = mockMvc.perform(post("/api/artworks")
+                .header("Authorization", "Bearer " + tokenA)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(art)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String artworkId = JsonPath.read(res.getResponse().getContentAsString(), "$.id");
+
+        // Verify it returns the videos
+        mockMvc.perform(get("/api/v1/public/" + slugA + "/artworks/" + artworkId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.videoUrls", hasSize(1)))
+                .andExpect(jsonPath("$.videoUrls[0]").value("/api/files/vid_v.mp4"));
+
+        // Update the artwork, adding more videos
+        ArtworkCreateRequest updateRequest = ArtworkCreateRequest.builder()
+                .title("Artwork avec Videos modifiée")
+                .technique(ArtworkTechnique.OIL)
+                .style(ArtworkStyle.ABSTRACT)
+                .imageUrls(List.of("/api/files/img_v.jpg"))
+                .videoUrls(List.of("/api/files/vid_v.mp4", "/api/files/vid_v2.mov"))
+                .build();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/artworks/" + artworkId)
+                .header("Authorization", "Bearer " + tokenA)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Artwork avec Videos modifiée"))
+                .andExpect(jsonPath("$.videoUrls", hasSize(2)))
+                .andExpect(jsonPath("$.videoUrls[0]").value("/api/files/vid_v.mp4"))
+                .andExpect(jsonPath("$.videoUrls[1]").value("/api/files/vid_v2.mov"));
+    }
 }
 

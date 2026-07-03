@@ -65,4 +65,25 @@ public class KernelFileHttpAdapter implements KernelFilePort {
                 response.getHeaders().getFirst(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION)
         );
     }
+
+    @Override
+    public DownloadStreamView downloadStream(UUID fileId, org.springframework.http.HttpHeaders clientHeaders, String accessToken) {
+        String effectiveToken = accessToken;
+        if (effectiveToken == null || effectiveToken.isBlank()) {
+            effectiveToken = kernelSystemUserTokenProvider.getSystemUserAccessToken();
+        }
+
+        String path = "/api/files/" + fileId;
+        org.springframework.http.ResponseEntity<org.springframework.core.io.Resource> response = kernelHttpClient.downloadStream(
+                path,
+                clientHeaders,
+                null,
+                effectiveToken
+        );
+        return new DownloadStreamView(
+                response.getBody(),
+                response.getStatusCode(),
+                response.getHeaders()
+        );
+    }
 }

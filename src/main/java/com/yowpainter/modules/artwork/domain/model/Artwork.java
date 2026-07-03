@@ -76,9 +76,20 @@ public class Artwork {
     @Builder.Default
     private List<ArtworkImage> images = new ArrayList<>();
 
+    // Relation avec les videos
+    @OneToMany(mappedBy = "artwork", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ArtworkVideo> videos = new ArrayList<>();
+
     // Helper method pour gerer la relation bidirectionnelle
     public void addImage(ArtworkImage image) {
         images.add(image);
         image.setArtwork(this);
+    }
+
+    // Helper method pour les videos
+    public void addVideo(ArtworkVideo video) {
+        videos.add(video);
+        video.setArtwork(this);
     }
 }

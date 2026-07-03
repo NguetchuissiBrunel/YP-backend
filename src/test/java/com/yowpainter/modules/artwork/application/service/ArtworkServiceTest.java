@@ -89,6 +89,11 @@ public class ArtworkServiceTest {
                 .status(ArtworkStatus.DRAFT)
                 .build();
         artwork.setId(UUID.randomUUID());
+
+        org.springframework.test.util.ReflectionTestUtils.setField(artworkService, "maxVideoSize", 52428800L);
+        org.springframework.test.util.ReflectionTestUtils.setField(artworkService, "allowedVideoFormats", "mp4,mov,webm,ogg");
+        org.springframework.test.util.ReflectionTestUtils.setField(artworkService, "allowedVideoMimeTypes", "video/mp4,video/quicktime,video/webm,video/ogg");
+        org.springframework.test.util.ReflectionTestUtils.setField(artworkService, "maxVideoCount", 3);
     }
 
     // ─── createArtwork ───────────────────────────────────────────────────────
@@ -263,7 +268,9 @@ public class ArtworkServiceTest {
         ArtworkCreateRequest request = ArtworkCreateRequest.builder()
                 .title("Nouveau Titre").description("Nouvelle description")
                 .technique(ArtworkTechnique.WATERCOLOR).style(ArtworkStyle.IMPRESSIONISM)
-                .dimensions("100x80 cm").build();
+                .dimensions("100x80 cm")
+                .imageUrls(List.of("/api/files/image1.jpg", "/api/files/image2.jpg"))
+                .build();
 
         when(artworkRepository.findById(artwork.getId())).thenReturn(Optional.of(artwork));
         when(artistRepository.findByEmail("jean@example.com")).thenReturn(Optional.of(artist));
@@ -275,6 +282,11 @@ public class ArtworkServiceTest {
         assertThat(response).isNotNull();
         assertThat(artwork.getTitle()).isEqualTo("Nouveau Titre");
         assertThat(artwork.getTechnique()).isEqualTo(ArtworkTechnique.WATERCOLOR);
+        assertThat(artwork.getImages()).hasSize(2);
+        assertThat(artwork.getImages().get(0).getImageUrl()).isEqualTo("/api/files/image1.jpg");
+        assertThat(artwork.getImages().get(0).isPrimary()).isTrue();
+        assertThat(artwork.getImages().get(1).getImageUrl()).isEqualTo("/api/files/image2.jpg");
+        assertThat(artwork.getImages().get(1).isPrimary()).isFalse();
         verify(artworkRepository).save(artwork);
     }
 
@@ -370,5 +382,76 @@ public class ArtworkServiceTest {
         List<String> result = artworkService.getSuggestions("zzz");
 
         assertThat(result).isEmpty();
+    }
+
+    // ─── Video support tests ───────────────────────────────────────────────
+
+    @Test
+    void createArtwork_withVideos_shouldSaveAndReturnResponse() {
+        ArtworkCreateRequest request = ArtworkCreateRequest.builder()
+                .title("La Belle Peinture")
+                .technique(ArtworkTechnique.OIL)
+                .style(ArtworkStyle.FIGURATIVE)
+                .videoUrls(List.of("/api/files/vid1.mp4", "/api/files/vid2.mov"))
+                .build();
+
+        when(artistRepository.findByEmail("jean@example.com")).thenReturn(Optional.of(artist));
+        when(artworkRepository.save(any(Artwork.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(artistRepository.findById(artist.getId())).thenReturn(Optional.of(artist));
+
+        ArtworkResponse response = artworkService.createArtwork("jean@example.com", request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getVideoUrls()).hasSize(2);
+        assertThat(response.getVideoUrls().get(0)).isEqualTo("/api/files/vid1.mp4");
+        assertThat(response.getVideoUrls().get(1)).isEqualTo("/api/files/vid2.mov");
+    }
+
+    @Test
+    void uploadArtworkVideo_shouldValidateAndUpload() throws Exception {
+        org.springframework.web.multipart.MultipartFile mockFile = mock(org.springframework.web.multipart.MultipartFile.class);
+        when(mockFile.getSize()).thenReturn(1024L);
+        when(mockFile.getOriginalFilename()).thenReturn("video.mp4");
+        when(mockFile.getContentType()).thenReturn("video/mp4");
+        when(mockFile.getBytes()).thenReturn(new byte[]{1, 2, 3});
+
+        KernelFilePort.FileView fileView = mock(KernelFilePort.FileView.class);
+        UUID fileId = UUID.randomUUID();
+        when(fileView.id()).thenReturn(fileId);
+        when(fileView.downloadUrl()).thenReturn("http://kernel/files/" + fileId);
+        when(kernelFilePort.upload(any(KernelFilePort.UploadFileCommand.class), any())).thenReturn(fileView);
+
+        when(artistRepository.findByEmail("jean@example.com")).thenReturn(Optional.of(artist));
+
+        ArtworkVideoUploadResponse response = artworkService.uploadArtworkVideo("jean@example.com", mockFile);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getFileId()).isEqualTo(fileId);
+        assertThat(response.getVideoUrl()).contains(fileId.toString());
+    }
+
+    @Test
+    void uploadArtworkVideo_whenSizeExceeded_shouldThrowException() {
+        org.springframework.web.multipart.MultipartFile mockFile = mock(org.springframework.web.multipart.MultipartFile.class);
+        when(mockFile.getSize()).thenReturn(100 * 1024 * 1024L); // 100MB
+
+        when(artistRepository.findByEmail("jean@example.com")).thenReturn(Optional.of(artist));
+
+        assertThatThrownBy(() -> artworkService.uploadArtworkVideo("jean@example.com", mockFile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("dépasse la limite autorisée");
+    }
+
+    @Test
+    void uploadArtworkVideo_whenFormatNotAllowed_shouldThrowException() {
+        org.springframework.web.multipart.MultipartFile mockFile = mock(org.springframework.web.multipart.MultipartFile.class);
+        when(mockFile.getSize()).thenReturn(1024L);
+        when(mockFile.getOriginalFilename()).thenReturn("video.avi");
+
+        when(artistRepository.findByEmail("jean@example.com")).thenReturn(Optional.of(artist));
+
+        assertThatThrownBy(() -> artworkService.uploadArtworkVideo("jean@example.com", mockFile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Format vidéo non supporté");
     }
 }
