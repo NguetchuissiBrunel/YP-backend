@@ -16,9 +16,11 @@ spring:
       max-request-size: 100MB
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    # Local : SPRING_DATASOURCE_* dans .env.local
+    # Render : PGHOST / PGPORT / PGDATABASE / PGUSER / PGPASSWORD (render.yaml)
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:postgres}}
+    username: ${SPRING_DATASOURCE_USERNAME:${PGUSER:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${PGPASSWORD:}}
     driver-class-name: org.postgresql.Driver
 
     hikari:

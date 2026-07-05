@@ -2,6 +2,7 @@ package com.yowpainter.config;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -20,6 +21,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
@@ -33,6 +35,9 @@ public class SecurityConfig {
     private final KernelProperties kernelProperties;
     private final KernelJwtAuthenticationConverter kernelJwtAuthenticationConverter;
     private final PublicAwareBearerTokenResolver publicAwareBearerTokenResolver;
+
+    @Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -129,11 +134,8 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    @Bean
-    public org.springframework.boot.web.servlet.FilterRegistrationBean<org.springframework.web.filter.CorsFilter> corsFilterRegistrationBean() {
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of(
+    private List<String> corsOriginPatterns() {
+        List<String> origins = new ArrayList<>(List.of(
                 "http://localhost:3000",
                 "http://*.localhost:3000",
                 "http://localhost:3001",
@@ -141,6 +143,17 @@ public class SecurityConfig {
                 "https://yp-frontend.vercel.app",
                 "https://*.yp-frontend.vercel.app"
         ));
+        if (frontendUrl != null && !frontendUrl.isBlank()) {
+            origins.add(frontendUrl.trim());
+        }
+        return origins;
+    }
+
+    @Bean
+    public org.springframework.boot.web.servlet.FilterRegistrationBean<org.springframework.web.filter.CorsFilter> corsFilterRegistrationBean() {
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOriginPatterns(corsOriginPatterns());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization", "X-Organization-Id"));
@@ -157,14 +170,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of(
-                "http://localhost:3000",
-                "http://*.localhost:3000",
-                "http://localhost:3001",
-                "http://*.localhost:3001",
-                "https://yp-frontend.vercel.app",
-                "https://*.yp-frontend.vercel.app"
-        ));
+        configuration.setAllowedOriginPatterns(corsOriginPatterns());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization", "X-Organization-Id"));

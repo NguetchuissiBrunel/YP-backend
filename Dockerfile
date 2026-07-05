@@ -17,8 +17,8 @@ WORKDIR /app
 # Copier le JAR généré depuis l'étape de build
 COPY --from=build /app/target/*.jar app.jar
 
-# Port par défaut
-EXPOSE 8080
+# Render définit PORT au runtime (10000 par défaut)
+EXPOSE 10000
 
-# Lancement de l'application avec un peu plus de mémoire pour le démarrage
+# Health check géré par Render via render.yaml (healthCheckPath)
 ENTRYPOINT ["java", "-Xmx420m", "-Xms160m", "-jar", "app.jar"]

@@ -1,0 +1,84 @@
+# Blueprint Render — https://render.com/docs/blueprint-spec
+# Déploiement : Dashboard Render → New → Blueprint → connecter ce dépôt Git.
+
+services:
+  - type: web
+    name: yowpainter-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /api/public/health
+    envVars:
+      # Render injecte PORT ; Spring Boot lit ${PORT} dans application.yml
+      - key: PORT
+        value: 10000
+
+      # PostgreSQL (connexion interne Render, même région)
+      - key: PGHOST
+        fromDatabase:
+          name: yowpainter-db
+          property: host
+      - key: PGPORT
+        fromDatabase:
+          name: yowpainter-db
+          property: port
+      - key: PGDATABASE
+        fromDatabase:
+          name: yowpainter-db
+          property: database
+      - key: PGUSER
+        fromDatabase:
+          name: yowpainter-db
+          property: user
+      - key: PGPASSWORD
+        fromDatabase:
+          name: yowpainter-db
+          property: password
+
+      # Kernel (URL publique de votre instance Kernel déployée)
+      - key: KSM_KERNEL_BASE_URL
+        sync: false
+      - key: KSM_KERNEL_CLIENT_ID
+        sync: false
+      - key: KSM_KERNEL_API_KEY
+        sync: false
+      - key: KSM_KERNEL_TENANT_ID
+        sync: false
+      - key: KSM_KERNEL_JWK_SET_URI
+        sync: false
+      - key: KSM_KERNEL_BOOTSTRAP_ADMIN_USERNAME
+        sync: false
+      - key: KSM_KERNEL_BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
+
+      # Frontend (CORS + liens e-mail)
+      - key: FRONTEND_URL
+        sync: false
+
+      # Paiements CamPay (prod)
+      - key: CAMPAY_USERNAME
+        sync: false
+      - key: CAMPAY_PASSWORD
+        sync: false
+      - key: CAMPAY_BASE_URL
+        value: https://www.campay.net/api
+
+      # E-mail (optionnel)
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+
+      # Prod
+      - key: KSM_KERNEL_AUTO_PROVISION_ARTISTS
+        value: "false"
+      - key: KSM_KERNEL_KAFKA_ENABLED
+        value: "false"
+
+databases:
+  - name: yowpainter-db
+    plan: free
+    databaseName: yowpainter
+    user: yowpainter
