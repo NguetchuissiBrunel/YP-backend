@@ -1,0 +1,19 @@
+sequenceDiagram
+    participant B as Acheteur
+    participant SC as ShopController
+    participant PS as PaymentService
+    participant CP as CamPay
+    participant K as Kernel
+    participant W as WalletService
+
+    B->>SC: POST /orders
+    B->>SC: POST /orders/{id}/checkout + phone
+    SC->>PS: initiatePayment()
+    PS->>CP: collect USSD push
+    CP-->>PS: reference pending
+    CP-->>PS: POST /payment/callback
+    PS->>CP: verifyTransaction()
+    PS->>K: confirmOrder()
+    PS->>W: credit net amount
+    PS->>K: notification
+    SC-->>B: Order PAID

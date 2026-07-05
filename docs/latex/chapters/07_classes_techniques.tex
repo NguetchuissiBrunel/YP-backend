@@ -1,0 +1,50 @@
+% =============================================================================
+\chapter{Modèle de classes technique}
+% =============================================================================
+
+Ce chapitre décrit les \textbf{classes d'infrastructure}, les ports, les adaptateurs
+et les composants transverses qui implémentent l'architecture hexagonale.
+
+\section{Diagramme de classes — Couche Auth (exemple module)}
+
+\includediagram{class-tech-auth}{Classes techniques — Module Auth (pattern hexagonal)}
+
+\section{Diagramme de classes — Intégration Kernel}
+
+\includediagram{class-tech-kernel}{Classes techniques — Couche Kernel partagée}
+
+\section{Diagramme de classes — Multi-tenancy}
+
+\includediagram{class-tech-tenant}{Classes techniques — Multi-tenancy Hibernate}
+
+\section{Diagramme de classes — Paiement CamPay}
+
+\includediagram{class-tech-payment}{Classes techniques — Module Payment}
+
+\section{Diagramme de classes — Sécurité}
+
+\includediagram{class-tech-security}{Classes techniques — Sécurité JWT}
+
+\section{Inventaire des ports de sortie (Repository)}
+
+\begin{longtable}{@{}ll@{}}
+  \caption{Ports de persistance par module} \label{tab:ports} \\
+  \toprule
+  \textbf{Module} & \textbf{Port(s)} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{Module} & \textbf{Port(s)} \\
+  \midrule
+  \endhead
+  auth & AppUserRepositoryPort, RefreshTokenRepositoryPort \\
+  artist & ArtistRepositoryPort, PendingProvisionSessionRepositoryPort \\
+  artwork & ArtworkRepositoryPort, ArtworkLikeRepositoryPort, ArtworkCommentRepositoryPort \\
+  shop & ProductRepositoryPort, OrderRepositoryPort, PaymentRepositoryPort \\
+  event & EventRepositoryPort, ReservationRepositoryPort, TicketRepositoryPort \\
+  payment & WalletRepositoryPort, WalletTransactionRepositoryPort \\
+  subscription & SubscriptionRepositoryPort \\
+  chat & ChatMessageRepositoryPort, ChatRoomRepositoryPort \\
+  news & NewsRepositoryPort \\
+  \bottomrule
+\end{longtable}

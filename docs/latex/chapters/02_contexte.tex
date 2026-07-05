@@ -1,0 +1,47 @@
+% =============================================================================
+\chapter{Contexte et environnement}
+% =============================================================================
+
+\section{Diagramme de contexte (niveau 0 DFD)}
+
+La figure~\ref{fig:contexte} situe le système \yow\ Backend au centre de son écosystème.
+Le frontend ne communique \textbf{jamais} directement avec le Kernel ; seul le backend
+YowPainter est une \emph{ClientApplication} autorisée.
+
+\includediagram{contexte}{Diagramme de contexte — écosystème \yow\ Backend}
+
+\section{Acteurs du système}
+
+\begin{table}[h]
+  \centering
+  \caption{Acteurs et responsabilités}
+  \label{tab:acteurs}
+  \begin{tabular}{@{}p{3cm}p{4cm}p{7cm}@{}}
+    \toprule
+    \textbf{Acteur} & \textbf{Rôle applicatif} & \textbf{Responsabilités principales} \\
+    \midrule
+    Artiste & \texttt{ROLE\_ARTIST} & Gérer profil, œuvres, boutique, événements, wallet, abonnement \\
+    Acheteur & \texttt{ROLE\_BUYER} & Acheter, réserver billets, liker, commenter, chatter \\
+    Administrateur & \texttt{ROLE\_ADMIN} & Valider artistes, gérer tenants, statistiques, logs \\
+    Frontend & Système client & Consommer l'API REST/WebSocket (JWT utilisateur) \\
+    \kernel & Système IAM/Commerce & Auth, org, produits, commandes, fichiers, notifications \\
+    CamPay & PSP Mobile Money & Collecte et retrait Mobile Money (XAF) \\
+    PostgreSQL & SGBD & Persistance multi-schémas \\
+    Kafka & Bus événements & Sync statuts commandes (optionnel) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Modèle multi-tenant}
+
+Chaque artiste actif possède un \textbf{schéma PostgreSQL dédié} (\texttt{tenant\_\{organizationId\}}).
+Les données globales (utilisateurs, artistes, wallet, chat) résident dans le schéma \texttt{public}.
+
+\includediagram{multitenant}{Isolation des données — schema-per-tenant}
+
+\textbf{Résolution du tenant :}
+\begin{enumerate}[noitemsep]
+  \item Header HTTP \texttt{X-Organization-Id} (contexte explicite)
+  \item Artiste authentifié → déduction via \texttt{organizationId}
+  \item Routes publiques \texttt{/v1/public/\{artistSlug\}/...} → résolution par slug
+\end{enumerate}

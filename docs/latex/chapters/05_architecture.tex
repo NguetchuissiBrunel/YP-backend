@@ -1,0 +1,91 @@
+% =============================================================================
+\chapter{Architecture logicielle}
+% =============================================================================
+
+\section{Architecture hexagonale (Ports \& Adapters)}
+
+Le backend suit une \textbf{architecture hexagonale modulaire}. Chaque module métier
+(\texttt{auth}, \texttt{artwork}, \texttt{shop}, etc.) est découpé en trois couches :
+
+\includediagram{hexagonal}{Architecture hexagonale — découpage en couches}
+
+\section{Diagramme de packages}
+
+La figure~\ref{fig:packages} illustre l'organisation modulaire du code source.
+
+\includediagram[width=0.95\textwidth]{packages}{Diagramme de packages — structure modulaire}
+
+\section{Structure interne d'un module type}
+
+Chaque module sous \texttt{com.yowpainter.modules.*} respecte la même arborescence :
+
+\begin{lstlisting}[language=]
+com.yowpainter.modules.<module>/
+  domain/
+    model/          # Entites metier pures
+    port/out/       # Interfaces RepositoryPort
+  application/
+    service/        # Cas d'utilisation (orchestration)
+  infrastructure/
+    adapter/
+      in/web/       # Controllers REST + DTOs
+      out/          # JPA, clients HTTP, etc.
+\end{lstlisting}
+
+\section{Diagramme de composants}
+
+\includediagram{composants}{Diagramme de composants — flux de dépendances}
+
+\section{Modules fonctionnels}
+
+\begin{table}[h]
+  \centering
+  \caption{Inventaire des 14 modules métier}
+  \label{tab:modules}
+  \small
+  \begin{tabular}{@{}llp{7cm}@{}}
+    \toprule
+    \textbf{Module} & \textbf{Service principal} & \textbf{Responsabilité} \\
+    \midrule
+    auth          & AuthService               & Authentification, profils, proxy Kernel auth \\
+    artist        & ArtistService             & Profil artiste, slug, analytics \\
+    artwork       & ArtworkService            & Œuvres, médias, likes, commentaires \\
+    shop          & ShopService               & Produits, commandes, commerce Kernel \\
+    event         & EventService              & Événements, réservations, billets QR \\
+    payment       & PaymentService            & CamPay, wallet, retraits, polling \\
+    subscription  & SubscriptionService       & Plans FREE/PRO/ELITE \\
+    chat          & ChatMessageService        & Messagerie REST + WebSocket \\
+    notification  & NotificationService       & Notifications via Kernel \\
+    news          & NewsService               & Actualités artiste \\
+    admin         & AdminService              & Administration plateforme \\
+    file          & FileService               & Upload délégué Kernel \\
+    search        & — (agrégation)            & Recherche globale multi-services \\
+    system        & —                         & Health, version, metrics \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Couche Kernel partagée}
+
+Le package \texttt{com.yowpainter.shared.kernel} centralise l'intégration avec le
+\kernel. Il expose 7 ports hexagonaux :
+
+\begin{table}[h]
+  \centering
+  \caption{Ports Kernel (shared/kernel/port)}
+  \label{tab:kernel-ports}
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    \textbf{Port} & \textbf{Responsabilité} \\
+    \midrule
+    KernelAuthPort            & Sign-up, login, refresh, logout, reset password \\
+    KernelOrganizationPort      & Création/approbation org, plans commerciaux \\
+    KernelAdministrationPort  & Rôles, assignation utilisateurs \\
+    KernelActorPort             & Onboarding acteurs BUSINESS/ART \\
+    KernelProductPort           & CRUD produits commerce \\
+    KernelSalesPort             & Commandes, confirm/cancel \\
+    KernelFilePort              & Upload fichiers \\
+    KernelNotificationPort      & Envoi/récupération notifications \\
+    \bottomrule
+  \end{tabular}
+\end{table}

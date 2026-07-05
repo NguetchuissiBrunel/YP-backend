@@ -1,0 +1,137 @@
+% =============================================================================
+% YowPainter Backend — Cahier d'Analyse et de Conception (CAC)
+% Compilation : .\compile-diagrams.ps1 puis pdflatex (×2)
+% Prérequis   : TeX Live / MiKTeX, Node.js (mermaid-cli), babel-french
+% =============================================================================
+\documentclass[11pt,a4paper,twoside,openright]{report}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{geometry}
+\geometry{margin=2.5cm, headheight=14pt}
+
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  citecolor=green!50!black,
+  urlcolor=cyan!60!black,
+  pdftitle={YowPainter Backend — Cahier d'Analyse et de Conception},
+  pdfauthor={Équipe YowPainter}
+}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,RO]{\small\textit{YowPainter Backend — CAC}}
+\fancyhead[RE,LO]{\small\leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% --- Couleurs thématiques ---
+\definecolor{yowblue}{RGB}{2,136,209}
+\definecolor{yowbrown}{RGB}{93,64,55}
+\definecolor{yowred}{RGB}{176,0,32}
+\definecolor{yowgreen}{RGB}{46,125,50}
+\definecolor{yowgray}{RGB}{120,120,120}
+\definecolor{domaincolor}{RGB}{225,245,254}
+\definecolor{appcolor}{RGB}{239,235,233}
+\definecolor{infracolor}{RGB}{239,232,233}
+
+% --- Inclusion diagrammes Mermaid (PNG) ---
+\newcommand{\includediagram}[3][width=\textwidth]{%
+  \begin{figure}[htbp]
+    \centering
+    \includegraphics[#1]{diagrams/#2.png}
+    \caption{#3}
+    \label{fig:#2}
+  \end{figure}
+}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  backgroundcolor=\color{gray!5},
+  keywordstyle=\color{yowblue}\bfseries,
+  commentstyle=\color{yowgray}\itshape
+}
+
+% --- Macros ---
+\newcommand{\yow}{YowPainter}
+\newcommand{\kernel}{Kernel RT-Comops}
+
+\title{%
+  {\Huge\textbf{Cahier d'Analyse\\et de Conception}}\\[1.5em]
+  {\LARGE Plateforme \yow\ Backend}\\[0.8em]
+  {\large API SaaS Multi-Tenant pour Artistes et Collectionneurs}\\[2em]
+  {\large Version 1.0.0-SNAPSHOT}
+}
+\author{Équipe Projet \yow}
+\date{Juillet 2026}
+
+\begin{document}
+
+% ===========================================================================
+% PAGE DE GARDE
+% ===========================================================================
+\begin{titlepage}
+  \centering
+  \vspace*{2cm}
+  {\Huge\textbf{Cahier d'Analyse\\[0.3em] et de Conception}}\\[2em]
+  \rule{\textwidth}{1.5pt}\\[1em]
+  {\LARGE\textbf{Plateforme \yow\ Backend}}\\[0.5em]
+  {\large API SaaS Multi-Tenant — Artistes \& Collectionneurs}\\[1em]
+  \rule{\textwidth}{0.5pt}\\[3em]
+
+  \begin{tcolorbox}[colback=domaincolor, colframe=yowblue, width=0.85\textwidth, arc=4pt]
+    \centering
+    \textbf{Document de référence technique}\\[0.5em]
+    Architecture hexagonale · Multi-tenancy · Intégration Kernel · CamPay
+  \end{tcolorbox}
+
+  \vfill
+  \begin{tabular}{rl}
+    \textbf{Version logicielle} & 1.0.0-SNAPSHOT \\
+    \textbf{Version document}  & 1.0 — Juillet 2026 \\
+    \textbf{Stack}             & Spring Boot 4 · PostgreSQL 18 · Java 17 \\
+    \textbf{Classification}    & Documentation interne \\
+  \end{tabular}
+  \vspace{2cm}
+\end{titlepage}
+
+\pagenumbering{roman}
+\tableofcontents
+\listoffigures
+\listoftables
+\cleardoublepage
+\pagenumbering{arabic}
+
+% ===========================================================================
+\input{chapters/01_introduction}
+\input{chapters/02_contexte}
+\input{chapters/03_besoins}
+\input{chapters/04_cas_utilisation}
+\input{chapters/05_architecture}
+\input{chapters/06_classes_metier}
+\input{chapters/07_classes_techniques}
+\input{chapters/08_sequences}
+\input{chapters/09_deploiement}
+\input{chapters/10_api}
+\input{chapters/11_annexes}
+
+\end{document}

@@ -1,0 +1,11 @@
+stateDiagram-v2
+    [*] --> PENDING_EMAIL : Inscription
+    PENDING_EMAIL --> PENDING_APPROVAL : confirm-email
+    PENDING_APPROVAL --> ACTIVE : admin approve + provisioning
+    PENDING_APPROVAL --> REJECTED : admin reject
+    ACTIVE --> [*]
+
+    note right of PENDING_APPROVAL
+        Auto-provision si
+        KSM_KERNEL_AUTO_PROVISION_ARTISTS=true
+    end note

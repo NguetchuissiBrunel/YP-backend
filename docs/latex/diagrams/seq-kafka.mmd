@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant K as Kernel
+    participant KF as Kafka
+    participant EL as EventListener
+    participant SS as ShopService
+
+    K->>KF: SALES_ORDER_CONFIRMED
+    KF->>EL: consume event
+    EL->>SS: handle(event)
+    SS->>SS: update Order status
+
+    Note over KF,EL: Topic iwm.events.business<br/>Group yowpainter-backend

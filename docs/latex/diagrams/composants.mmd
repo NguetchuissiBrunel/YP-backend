@@ -1,0 +1,20 @@
+flowchart TB
+    REST[Couche REST<br/>Controllers]
+    APP[Couche Application<br/>Services]
+    DOM[Couche Domaine<br/>Models + Ports]
+    JPA[Adaptateur JPA]
+    KERN[Adaptateur Kernel HTTP]
+    CAMP[Adaptateur CamPay]
+
+    PG[(PostgreSQL)]
+    KAPI[Kernel API]
+    CAPI[CamPay API]
+
+    REST --> APP
+    APP --> DOM
+    JPA -.-> DOM
+    KERN -.-> DOM
+    CAMP -.-> DOM
+    JPA --> PG
+    KERN --> KAPI
+    CAMP --> CAPI

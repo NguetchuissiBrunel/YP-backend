@@ -1,0 +1,68 @@
+% =============================================================================
+\chapter{Déploiement et infrastructure}
+% =============================================================================
+
+\section{Diagramme de déploiement — Environnement local}
+
+\includediagram{deploy-local}{Diagramme de déploiement — Développement local}
+
+\section{Diagramme de déploiement — Production (cible)}
+
+\includediagram{deploy-prod}{Diagramme de déploiement — Architecture production cible}
+
+\section{Variables d'environnement critiques}
+
+\begin{longtable}{@{}llp{6.5cm}@{}}
+  \caption{Variables d'environnement principales} \label{tab:env} \\
+  \toprule
+  \textbf{Variable} & \textbf{Exemple} & \textbf{Description} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{Variable} & \textbf{Exemple} & \textbf{Description} \\
+  \midrule
+  \endhead
+  \texttt{PORT} & 8090 & Port HTTP du backend \\
+  \texttt{SPRING\_DATASOURCE\_URL} & jdbc:postgresql://... & Connexion PostgreSQL \\
+  \texttt{KSM\_KERNEL\_BASE\_URL} & http://localhost:8080 & URL du Kernel \\
+  \texttt{KSM\_KERNEL\_CLIENT\_ID} & yowpainter-backend & Identifiant ClientApplication \\
+  \texttt{KSM\_KERNEL\_API\_KEY} & (secret) & Clé API Kernel \\
+  \texttt{KSM\_KERNEL\_TENANT\_ID} & UUID & Tenant Kernel plateforme \\
+  \texttt{KSM\_KERNEL\_JWK\_SET\_URI} & /.well-known/jwks.json & Validation JWT RS256 \\
+  \texttt{KSM\_KERNEL\_AUTO\_PROVISION\_ARTISTS} & false & Provisioning auto vs manuel \\
+  \texttt{KSM\_KERNEL\_KAFKA\_ENABLED} & true/false & Activation consumer Kafka \\
+  \texttt{APP\_PAYMENT\_CAMPAY\_*} & ... & Credentials CamPay \\
+  \texttt{APP\_FRONTEND\_URL} & http://localhost:3000 & URL frontend (emails, redirects) \\
+  \bottomrule
+\end{longtable}
+
+\section{Pipeline de build et déploiement}
+
+\begin{enumerate}[noitemsep]
+  \item \textbf{Build} : \texttt{mvn clean install} (compilation, tests unitaires)
+  \item \textbf{Tests} : \texttt{mvn test} (H2 en mémoire pour tests)
+  \item \textbf{Package} : JAR exécutable Spring Boot (\texttt{target/yowpainter-backend-*.jar})
+  \item \textbf{Migrations} : Flyway exécuté au démarrage (schéma public + tenants actifs)
+  \item \textbf{Démarrage} : \texttt{java -jar app.jar} ou \texttt{.\textbackslash scripts\textbackslash run-local.ps1}
+  \item \textbf{Vérification} : \texttt{GET /api/public/health} + Swagger UI
+\end{enumerate}
+
+\section{Monitoring et observabilité}
+
+\begin{table}[h]
+  \centering
+  \caption{Points de contrôle disponibles}
+  \label{tab:monitoring}
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    \textbf{Endpoint} & \textbf{Auth} & \textbf{Usage} \\
+    \midrule
+    \texttt{GET /api/public/health} & Public & Health check externe (load balancer) \\
+    \texttt{GET /api/system/health} & JWT & Health détaillé (interne) \\
+    \texttt{GET /api/system/version} & JWT & Version application \\
+    \texttt{GET /api/system/metrics} & JWT & Métriques basiques \\
+    \texttt{GET /api/admin/stats} & ADMIN & Statistiques plateforme \\
+    \texttt{GET /api/admin/logs} & ADMIN & Logs récents \\
+    \bottomrule
+  \end{tabular}
+\end{table}

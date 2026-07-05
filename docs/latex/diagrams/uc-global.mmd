@@ -1,0 +1,36 @@
+flowchart LR
+    subgraph YowPainter["YowPainter Backend"]
+        direction TB
+        UC1[S'inscrire / Se connecter]
+        UC2[Gérer profil artiste]
+        UC3[Publier des oeuvres]
+        UC4[Gérer boutique]
+        UC5[Organiser evenements]
+        UC6[Wallet / Retraits]
+        UC7[Gérer abonnement]
+        UC8[Acheter une oeuvre]
+        UC9[Reserver un billet]
+        UC10[Liker / Commenter]
+        UC11[Chatter temps reel]
+        UC12[Valider artiste]
+        UC13[Gérer tenants]
+        UC14[Consulter statistiques]
+        UC15[Traiter paiement]
+        UC16[Synchroniser commerce]
+    end
+
+    Artist((Artiste))
+    Buyer((Acheteur))
+    Admin((Admin))
+    CamPay[CamPay]
+    Kernel[Kernel]
+
+    Artist --> UC1 & UC2 & UC3 & UC4 & UC5 & UC6 & UC7
+    Buyer --> UC1 & UC8 & UC9 & UC10 & UC11
+    Admin --> UC12 & UC13 & UC14
+
+    UC8 & UC9 -.->|include| UC15
+    UC4 -.->|include| UC16
+    UC15 --> CamPay
+    UC16 --> Kernel
+    UC1 & UC12 --> Kernel

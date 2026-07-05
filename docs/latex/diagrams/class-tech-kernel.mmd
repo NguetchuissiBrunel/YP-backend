@@ -1,0 +1,48 @@
+classDiagram
+    class KernelHttpClient {
+        +get()
+        +post()
+        +put()
+        +delete()
+        +withTenantContext()
+        +withUserToken()
+    }
+
+    class KernelAuthPort {
+        <<interface>>
+    }
+    class KernelOrganizationPort {
+        <<interface>>
+    }
+    class KernelSalesPort {
+        <<interface>>
+    }
+
+    class KernelAuthHttpAdapter {
+        implements KernelAuthPort
+    }
+    class KernelOrganizationHttpAdapter {
+        implements KernelOrganizationPort
+    }
+    class KernelSalesHttpAdapter {
+        implements KernelSalesPort
+    }
+
+    class KernelRequestContextFilter {
+        Injecte X-Client-Id, X-Api-Key
+    }
+
+    class OrganizationContext {
+        ThreadLocal organizationId
+    }
+
+    KernelAuthHttpAdapter ..|> KernelAuthPort
+    KernelOrganizationHttpAdapter ..|> KernelOrganizationPort
+    KernelSalesHttpAdapter ..|> KernelSalesPort
+
+    KernelAuthHttpAdapter --> KernelHttpClient
+    KernelOrganizationHttpAdapter --> KernelHttpClient
+    KernelSalesHttpAdapter --> KernelHttpClient
+
+    KernelRequestContextFilter --> OrganizationContext
+    KernelHttpClient --> KernelRequestContextFilter

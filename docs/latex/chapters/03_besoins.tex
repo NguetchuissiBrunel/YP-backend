@@ -1,0 +1,76 @@
+% =============================================================================
+\chapter{Analyse des besoins}
+% =============================================================================
+
+\section{Besoins fonctionnels}
+
+\begin{longtable}{@{}p{1.2cm}p{4.5cm}p{8cm}@{}}
+  \caption{Catalogue des besoins fonctionnels} \label{tab:bf} \\
+  \toprule
+  \textbf{ID} & \textbf{Module} & \textbf{Description} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{ID} & \textbf{Module} & \textbf{Description} \\
+  \midrule
+  \endhead
+  BF-01 & Auth & Inscription artiste/acheteur avec confirmation e-mail via Kernel \\
+  BF-02 & Auth & Connexion, refresh token, déconnexion (proxy Kernel) \\
+  BF-03 & Auth & Réinitialisation mot de passe par e-mail \\
+  BF-04 & Admin & Validation manuelle des inscriptions artistes (provisioning org Kernel) \\
+  BF-05 & Artist & Profil artiste avec slug unique et analytics \\
+  BF-06 & Artwork & CRUD œuvres, images/vidéos, likes, commentaires \\
+  BF-07 & Shop & Catalogue produits, commandes, checkout Mobile Money \\
+  BF-08 & Event & Création événements, réservations, billets QR \\
+  BF-09 & Payment & Intégration CamPay (collect, callback, polling) \\
+  BF-10 & Payment & Wallet artiste, commissions, retraits \\
+  BF-11 & Subscription & Plans FREE/PRO/ELITE avec taux de commission différenciés \\
+  BF-12 & Chat & Messagerie instantanée REST + WebSocket STOMP \\
+  BF-13 & Notification & Notifications utilisateur (source Kernel) \\
+  BF-14 & News & Actualités artiste \\
+  BF-15 & Search & Recherche globale multi-entités \\
+  BF-16 & File & Upload fichiers délégué au Kernel \\
+  BF-17 & Admin & Gestion tenants, utilisateurs, statistiques \\
+  \bottomrule
+\end{longtable}
+
+\section{Besoins non fonctionnels}
+
+\begin{table}[h]
+  \centering
+  \caption{Exigences non fonctionnelles}
+  \label{tab:bnf}
+  \begin{tabular}{@{}p{3.5cm}p{10cm}@{}}
+    \toprule
+    \textbf{Catégorie} & \textbf{Exigence} \\
+    \midrule
+    Performance       & API REST stateless, temps de réponse $<$ 500\,ms pour requêtes simples \\
+    Scalabilité       & Isolation par schéma permettant le sharding futur par tenant \\
+    Sécurité          & JWT RS256 (JWKS Kernel), CORS configuré, routes protégées par rôle \\
+    Disponibilité     & Health checks (\texttt{/api/public/health}, \texttt{/api/system/health}) \\
+    Maintenabilité    & Architecture hexagonale modulaire, tests unitaires par service \\
+    Traçabilité       & Logs structurés, provisioning artiste tracé (\texttt{[provision]}) \\
+    Portabilité       & Configuration externalisée (variables d'environnement) \\
+    Conformité        & Pas de stockage direct des credentials CamPay côté client \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Contraintes}
+
+\begin{itemize}[noitemsep]
+  \item Le frontend \textbf{ne doit jamais} appeler le Kernel avec \texttt{X-Api-Key}.
+  \item Les tokens JWT sont émis par le Kernel (RS256) ; YowPainter est un resource server.
+  \item Le provisioning artiste en production requiert un code MFA bootstrap admin.
+  \item Les notifications sont centralisées dans le Kernel (pas de double écriture locale).
+  \item \texttt{ddl-auto: none} — toute évolution de schéma passe par Flyway.
+\end{itemize}
+
+\section{Hypothèses}
+
+\begin{itemize}[noitemsep]
+  \item Le Kernel RT-Comops est déployé et accessible avant le backend YowPainter.
+  \item Une \texttt{ClientApplication} \texttt{yowpainter-backend} est enregistrée dans le Kernel.
+  \item PostgreSQL 18 est disponible avec droits de création de schémas.
+  \item CamPay est configuré avec credentials valides pour l'environnement cible.
+\end{itemize}

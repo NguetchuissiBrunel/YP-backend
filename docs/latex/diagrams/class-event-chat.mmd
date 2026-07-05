@@ -1,0 +1,48 @@
+classDiagram
+    class Event {
+        +UUID id
+        +UUID artistId
+        +String title
+        +EventType type
+        +EventStatus status
+        +String location
+        +LocalDateTime startDate
+        +int maxCapacity
+        +BigDecimal ticketPrice
+    }
+
+    class Reservation {
+        +UUID id
+        +UUID userId
+        +UUID eventId
+        +ReservationStatus status
+        +int quantity
+        +BigDecimal totalAmount
+    }
+
+    class Ticket {
+        +UUID id
+        +String qrCodeData
+        +boolean validated
+        +LocalDateTime validatedAt
+    }
+
+    class ChatMessage {
+        +UUID id
+        +UUID senderId
+        +UUID recipientId
+        +String content
+        +ChatMessageStatus status
+        +LocalDateTime timestamp
+    }
+
+    class ChatRoom {
+        +UUID id
+        +UUID participant1Id
+        +UUID participant2Id
+        +LocalDateTime lastMessageAt
+    }
+
+    Event "1" --> "*" Reservation
+    Reservation "1" --> "1" Ticket
+    ChatRoom "1" --> "*" ChatMessage

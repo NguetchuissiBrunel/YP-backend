@@ -1,0 +1,64 @@
+classDiagram
+    class AppUser {
+        +UUID id
+        +String email
+        +String passwordHash
+        +String firstName
+        +String lastName
+        +UserRole role
+        +UUID kernelUserId
+        +LocalDateTime createdAt
+    }
+
+    class Artist {
+        +String slug
+        +String artistName
+        +String status
+        +UUID tenantId
+        +UUID organizationId
+        +UUID kernelActorId
+        +String payoutPhone
+    }
+
+    class UserRole {
+        <<enumeration>>
+        ROLE_ARTIST
+        ROLE_BUYER
+        ROLE_ADMIN
+    }
+
+    class Wallet {
+        +UUID id
+        +UUID artistId
+        +BigDecimal balance
+        +String currency
+    }
+
+    class WalletTransaction {
+        +UUID id
+        +WalletTransactionType type
+        +BigDecimal amount
+        +String reference
+    }
+
+    class Subscription {
+        +UUID id
+        +UUID artistId
+        +SubscriptionPlan plan
+        +LocalDate startDate
+        +boolean active
+    }
+
+    class SubscriptionPlan {
+        <<enumeration>>
+        FREE 15%
+        PRO 10%
+        ELITE 5%
+    }
+
+    AppUser <|-- Artist
+    AppUser --> UserRole
+    Artist "1" --> "1" Wallet
+    Wallet "1" --> "*" WalletTransaction
+    Artist "1" --> "1" Subscription
+    Subscription --> SubscriptionPlan

@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant S as Expéditeur
+    participant WS as WebSocket /ws
+    participant CC as ChatController
+    participant DB as PostgreSQL
+    participant R as Destinataire
+
+    S->>WS: CONNECT + JWT Bearer
+    R->>WS: CONNECT + JWT Bearer
+    S->>WS: SEND /app/chat
+    WS->>CC: processMessage()
+    CC->>DB: save ChatMessage
+    CC->>WS: convertAndSendToUser
+    WS->>R: /user/queue/messages

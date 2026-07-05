@@ -1,0 +1,83 @@
+% =============================================================================
+\chapter{Introduction}
+% =============================================================================
+
+\section{Objet du document}
+
+Ce \textbf{cahier d'analyse et de conception (CAC)} constitue la \emph{documentation de référence}
+du backend \yow. Il décrit l'ensemble du système : contexte métier, acteurs, cas d'utilisation,
+architecture logicielle, modèles de données, intégrations externes, sécurité et déploiement.
+
+Ce document s'adresse aux développeurs, architectes, testeurs et parties prenantes techniques
+souhaitant comprendre, maintenir ou faire évoluer la plateforme.
+
+\section{Présentation du projet}
+
+\yow\ est une plateforme \textbf{SaaS multi-tenant} dédiée aux \textbf{artistes visuels} et aux
+\textbf{collectionneurs}. Elle permet :
+
+\begin{itemize}[noitemsep]
+  \item aux artistes de créer un espace personnel (tenant isolé), publier des œuvres, gérer une boutique en ligne, organiser des événements et recevoir des paiements ;
+  \item aux acheteurs de découvrir des artistes, acheter des œuvres, réserver des billets et interagir (likes, commentaires, chat) ;
+  \item aux administrateurs de valider les inscriptions artistes, superviser les tenants et consulter les statistiques globales.
+\end{itemize}
+
+\section{Périmètre}
+
+\begin{table}[h]
+  \centering
+  \caption{Périmètre fonctionnel du backend}
+  \label{tab:perimetre}
+  \begin{tabular}{@{}lp{10cm}@{}}
+    \toprule
+    \textbf{Inclus} & Authentification JWT, multi-tenancy, œuvres, boutique, événements, paiements CamPay, wallet, abonnements, chat WebSocket, notifications, recherche, administration \\
+    \midrule
+    \textbf{Exclus} & Frontend Next.js, interface utilisateur Kernel RT-Comops, infrastructure réseau (load balancers, CDN) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Stack technique}
+
+\begin{table}[h]
+  \centering
+  \caption{Technologies utilisées}
+  \label{tab:stack}
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    \textbf{Composant} & \textbf{Technologie / Version} \\
+    \midrule
+    Langage            & Java 17 \\
+    Framework          & Spring Boot 4.0.0 (Spring Framework 7.0) \\
+    Sécurité           & Spring Security 7.0, OAuth2 Resource Server, JWT RS256 \\
+    Persistance        & Spring Data JPA, Hibernate 6, PostgreSQL 18 \\
+    Multi-tenancy      & Schema-per-tenant (Hibernate) \\
+    Migrations         & Flyway 11.0.0 \\
+    Paiements          & CamPay (Mobile Money MTN, Orange, MoMo Pay) \\
+    Messagerie         & WebSocket STOMP (Spring) \\
+    Événements         & Apache Kafka (optionnel, sync Kernel) \\
+    Documentation API  & OpenAPI 3 / SpringDoc 3.0.0 \\
+    E-mail             & Spring Boot Mail \\
+    Build              & Maven 3.9+ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Conventions documentaires}
+
+\begin{itemize}[noitemsep]
+  \item Les diagrammes UML sont réalisés en \TikZ\ pour une compilation LaTeX autonome.
+  \item Les chemins de packages suivent la convention \texttt{com.yowpainter.*}.
+  \item Les endpoints API sont préfixés par \texttt{/api}.
+  \item Les identifiants UUID sont notés \texttt{UUID} sauf mention contraire.
+\end{itemize}
+
+\section{Références}
+
+\begin{itemize}[noitemsep]
+  \item \texttt{README.md} — Vue d'ensemble et installation
+  \item \texttt{docs/KERNEL\_INTEGRATION.md} — Intégration Kernel RT-Comops
+  \item \texttt{docs/ARTIST\_APPROVAL\_WORKFLOW.md} — Workflow validation artiste
+  \item \texttt{docs/CONFIGURATION\_KERNEL\_YOWPAINTER.md} — Configuration locale
+  \item Swagger UI : \url{http://localhost:8090/swagger-ui.html}
+\end{itemize}

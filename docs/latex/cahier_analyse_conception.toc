@@ -1,0 +1,81 @@
+\babel@toc {french}{}\relax 
+\contentsline {chapter}{\numberline {1}Introduction}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Objet du document}{1}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Présentation du projet}{1}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Périmètre}{1}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Stack technique}{1}{section.1.4}%
+\contentsline {section}{\numberline {1.5}Conventions documentaires}{1}{section.1.5}%
+\contentsline {section}{\numberline {1.6}Références}{2}{section.1.6}%
+\contentsline {chapter}{\numberline {2}Contexte et environnement}{3}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Diagramme de contexte (niveau 0 DFD)}{3}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Acteurs du système}{4}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Modèle multi-tenant}{4}{section.2.3}%
+\contentsline {chapter}{\numberline {3}Analyse des besoins}{7}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Besoins fonctionnels}{7}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Besoins non fonctionnels}{7}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Contraintes}{7}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Hypothèses}{8}{section.3.4}%
+\contentsline {chapter}{\numberline {4}Cas d'utilisation}{9}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Diagramme général des cas d'utilisation}{9}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Description détaillée des cas d'utilisation principaux}{9}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}UC-01 : Inscription Artiste}{9}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}UC-02 : Validation Artiste par Admin}{9}{subsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.2.3}UC-03 : Achat d'une œuvre (Checkout)}{9}{subsection.4.2.3}%
+\contentsline {subsection}{\numberline {4.2.4}UC-04 : Chat temps réel}{9}{subsection.4.2.4}%
+\contentsline {section}{\numberline {4.3}Matrice acteur / cas d'utilisation}{9}{section.4.3}%
+\contentsline {chapter}{\numberline {5}Architecture logicielle}{13}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Architecture hexagonale (Ports \& Adapters)}{13}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Diagramme de packages}{13}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Structure interne d'un module type}{13}{section.5.3}%
+\contentsline {section}{\numberline {5.4}Diagramme de composants}{14}{section.5.4}%
+\contentsline {section}{\numberline {5.5}Modules fonctionnels}{14}{section.5.5}%
+\contentsline {section}{\numberline {5.6}Couche Kernel partagée}{14}{section.5.6}%
+\contentsline {chapter}{\numberline {6}Modèle de classes métier}{17}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Diagramme de classes — Noyau utilisateurs}{17}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Diagramme de classes — Artworks}{17}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Diagramme de classes — Commerce}{17}{section.6.3}%
+\contentsline {section}{\numberline {6.4}Diagramme de classes — Événements et Chat}{17}{section.6.4}%
+\contentsline {section}{\numberline {6.5}Modèle entité-relation global}{17}{section.6.5}%
+\contentsline {section}{\numberline {6.6}Statuts métier clés}{17}{section.6.6}%
+\contentsline {chapter}{\numberline {7}Modèle de classes technique}{23}{chapter.7}%
+\contentsline {section}{\numberline {7.1}Diagramme de classes — Couche Auth (exemple module)}{23}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Diagramme de classes — Intégration Kernel}{25}{section.7.2}%
+\contentsline {section}{\numberline {7.3}Diagramme de classes — Multi-tenancy}{25}{section.7.3}%
+\contentsline {section}{\numberline {7.4}Diagramme de classes — Paiement CamPay}{25}{section.7.4}%
+\contentsline {section}{\numberline {7.5}Diagramme de classes — Sécurité}{25}{section.7.5}%
+\contentsline {section}{\numberline {7.6}Inventaire des ports de sortie (Repository)}{25}{section.7.6}%
+\contentsline {chapter}{\numberline {8}Diagrammes de séquence}{27}{chapter.8}%
+\contentsline {section}{\numberline {8.1}Séquence — Authentification (Login)}{27}{section.8.1}%
+\contentsline {section}{\numberline {8.2}Séquence — Provisioning artiste (validation admin)}{27}{section.8.2}%
+\contentsline {section}{\numberline {8.3}Séquence — Checkout boutique (CamPay)}{27}{section.8.3}%
+\contentsline {section}{\numberline {8.4}Séquence — Chat WebSocket STOMP}{27}{section.8.4}%
+\contentsline {section}{\numberline {8.5}Séquence — Sync Kafka (optionnel)}{27}{section.8.5}%
+\contentsline {section}{\numberline {8.6}Machine d'états — Cycle de vie artiste}{27}{section.8.6}%
+\contentsline {chapter}{\numberline {9}Déploiement et infrastructure}{31}{chapter.9}%
+\contentsline {section}{\numberline {9.1}Diagramme de déploiement — Environnement local}{31}{section.9.1}%
+\contentsline {section}{\numberline {9.2}Diagramme de déploiement — Production (cible)}{31}{section.9.2}%
+\contentsline {section}{\numberline {9.3}Variables d'environnement critiques}{31}{section.9.3}%
+\contentsline {section}{\numberline {9.4}Pipeline de build et déploiement}{32}{section.9.4}%
+\contentsline {section}{\numberline {9.5}Monitoring et observabilité}{32}{section.9.5}%
+\contentsline {chapter}{\numberline {10}Référence API REST}{35}{chapter.10}%
+\contentsline {section}{\numberline {10.1}Conventions générales}{35}{section.10.1}%
+\contentsline {section}{\numberline {10.2}Matrice des endpoints par module}{35}{section.10.2}%
+\contentsline {subsection}{\numberline {10.2.1}Authentification — \texttt {/api/auth}}{35}{subsection.10.2.1}%
+\contentsline {subsection}{\numberline {10.2.2}Profil — \texttt {/api/me}}{35}{subsection.10.2.2}%
+\contentsline {subsection}{\numberline {10.2.3}Artiste — \texttt {/api}}{35}{subsection.10.2.3}%
+\contentsline {subsection}{\numberline {10.2.4}Œuvres — \texttt {/api}}{36}{subsection.10.2.4}%
+\contentsline {subsection}{\numberline {10.2.5}Boutique — \texttt {/api/shop}}{36}{subsection.10.2.5}%
+\contentsline {subsection}{\numberline {10.2.6}Événements — \texttt {/api}}{36}{subsection.10.2.6}%
+\contentsline {subsection}{\numberline {10.2.7}Paiement et Wallet}{37}{subsection.10.2.7}%
+\contentsline {subsection}{\numberline {10.2.8}Administration — \texttt {/api/admin}}{37}{subsection.10.2.8}%
+\contentsline {section}{\numberline {10.3}WebSocket STOMP}{37}{section.10.3}%
+\contentsline {section}{\numberline {10.4}Codes de réponse HTTP}{37}{section.10.4}%
+\contentsline {chapter}{\numberline {11}Annexes}{39}{chapter.11}%
+\contentsline {section}{\numberline {11.1}Glossaire}{39}{section.11.1}%
+\contentsline {section}{\numberline {11.2}Matrice de traçabilité besoins / modules}{40}{section.11.2}%
+\contentsline {section}{\numberline {11.3}Structure des schémas de base de données}{40}{section.11.3}%
+\contentsline {subsection}{\numberline {11.3.1}Schéma \texttt {public}}{40}{subsection.11.3.1}%
+\contentsline {subsection}{\numberline {11.3.2}Schéma \texttt {tenant\_\{organizationId\}}}{40}{subsection.11.3.2}%
+\contentsline {section}{\numberline {11.4}Checklist de mise en production}{40}{section.11.4}%
+\contentsline {section}{\numberline {11.5}Historique des versions du document}{41}{section.11.5}%
+\contentsline {section}{\numberline {11.6}Index des figures}{41}{section.11.6}%

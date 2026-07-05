@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant C as Client
+    participant AC as AuthController
+    participant K as Kernel
+    participant DB as PostgreSQL
+
+    C->>AC: POST /api/auth/login
+    AC->>K: login(email, password)
+    K-->>AC: JWT RS256 + refresh token
+    Note over K,AC: Validation via JWKS Kernel
+    AC->>DB: findByEmail()
+    DB-->>AC: AppUser
+    AC-->>C: AuthResponse + JWT

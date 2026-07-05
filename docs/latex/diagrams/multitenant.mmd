@@ -1,0 +1,12 @@
+flowchart TB
+    Filter[TenantSecurityFilter]
+    Resolver[CurrentTenantIdentifierResolver]
+    Provider[MultiTenantConnectionProvider<br/>SET search_path]
+
+    Filter --> Resolver
+    Resolver --> Provider
+
+    Provider --> Public[(Schéma public<br/>app_user, artist, wallet, chat)]
+    Provider --> T1[(Schéma tenant_org1<br/>artworks, orders, events)]
+    Provider --> T2[(Schéma tenant_org2<br/>...)]
+    Provider --> TN[(...)]

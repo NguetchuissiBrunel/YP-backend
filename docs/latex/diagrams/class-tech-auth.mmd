@@ -1,0 +1,52 @@
+classDiagram
+    class AppUserRepositoryPort {
+        <<interface>>
+        +findByEmail()
+        +save(AppUser)
+        +findById(UUID)
+    }
+
+    class AppUser {
+        domain model
+    }
+
+    class AuthService {
+        -appUserRepositoryPort
+        -kernelAuthPort
+        +register()
+        +login()
+        +confirmEmail()
+    }
+
+    class AuthController {
+        +register(RegisterRequest)
+        +login(LoginRequest)
+        +refresh()
+    }
+
+    class AppUserRepositoryAdapter {
+        implements AppUserRepositoryPort
+    }
+
+    class KernelAuthPort {
+        <<interface>>
+        +signUp()
+        +login()
+        +refresh()
+    }
+
+    class KernelAuthHttpAdapter {
+        implements KernelAuthPort
+    }
+
+    class KernelArtistProvisioningService {
+        +provisionArtist(Artist)
+    }
+
+    AuthController --> AuthService
+    AuthService --> AppUserRepositoryPort
+    AuthService --> KernelAuthPort
+    AuthService --> AppUser
+    AppUserRepositoryAdapter ..|> AppUserRepositoryPort
+    KernelAuthHttpAdapter ..|> KernelAuthPort
+    KernelArtistProvisioningService --> AuthService

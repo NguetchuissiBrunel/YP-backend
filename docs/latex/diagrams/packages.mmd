@@ -1,0 +1,43 @@
+flowchart TB
+    ROOT[com.yowpainter]
+
+    subgraph Config["config"]
+        SEC[SecurityConfig]
+        WS[WebSocketConfig]
+        KP[KernelProperties]
+        OAPI[OpenApiConfig]
+    end
+
+    subgraph Shared["shared"]
+        CTX[context/ OrganizationContext]
+        KERN[kernel/ ports + adapters]
+        TEN[tenant/ MultiTenant]
+        SECU[security/ JWT]
+    end
+
+    subgraph Modules["modules"]
+        direction LR
+        M1[auth]
+        M2[artist]
+        M3[artwork]
+        M4[shop]
+        M5[event]
+        M6[payment]
+        M7[chat]
+        M8[admin]
+        M9[news]
+        M10[notification]
+        M11[subscription]
+        M12[search]
+        M13[file]
+        M14[system]
+    end
+
+    APP[YowPainterApplication]
+
+    ROOT --> Config
+    ROOT --> Shared
+    ROOT --> Modules
+    ROOT --> APP
+
+    M1 & M2 & M3 & M4 & M5 & M6 & M7 & M8 & M9 & M10 & M11 & M12 & M13 & M14 --> MODINT["domain / application / infrastructure"]

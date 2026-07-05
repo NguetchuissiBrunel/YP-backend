@@ -1,0 +1,44 @@
+classDiagram
+    class PaymentService {
+        +initiatePayment()
+        +handleCallback()
+        +verifyTransaction()
+    }
+
+    class WalletService {
+        +credit()
+        +debit()
+        +getBalance()
+    }
+
+    class PaymentPollingService {
+        Scheduled backup statut CamPay
+    }
+
+    class PayoutService {
+        +withdraw() via CamPay
+    }
+
+    class CampayClient {
+        +getToken()
+        +collect()
+        +getTransactionStatus()
+        +withdraw()
+    }
+
+    class CampayConfig {
+        app-username
+        app-password
+        callback-url
+    }
+
+    class PaymentController {
+        POST /callback webhook
+    }
+
+    PaymentController --> PaymentService
+    PaymentService --> CampayClient
+    PaymentPollingService --> CampayClient
+    PayoutService --> CampayClient
+    CampayConfig --> CampayClient
+    PaymentService --> WalletService

@@ -1,0 +1,208 @@
+% =============================================================================
+\chapter{Référence API REST}
+% =============================================================================
+
+\section{Conventions générales}
+
+\begin{itemize}[noitemsep]
+  \item \textbf{Base URL} : \texttt{http://localhost:8090} (dev) ou URL de production
+  \item \textbf{Format} : JSON (\texttt{Content-Type: application/json})
+  \item \textbf{Authentification} : \texttt{Authorization: Bearer <JWT>} (sauf routes publiques)
+  \item \textbf{Documentation interactive} : \texttt{/swagger-ui.html}
+  \item \textbf{Multi-tenant} : header optionnel \texttt{X-Organization-Id: <UUID>}
+\end{itemize}
+
+\section{Matrice des endpoints par module}
+
+\subsection{Authentification — \texttt{/api/auth}}
+
+\begin{longtable}{@{}llll@{}}
+  \caption{Endpoints Auth} \label{tab:api-auth} \\
+  \toprule
+  \textbf{Méthode} & \textbf{Path} & \textbf{Auth} & \textbf{Description} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{Méthode} & \textbf{Path} & \textbf{Auth} & \textbf{Description} \\
+  \midrule
+  \endhead
+  GET    & /roles              & Public & Liste des rôles disponibles \\
+  POST   & /register           & Public & Inscription artiste/acheteur \\
+  POST   & /register/avatar    & Public & Upload avatar inscription \\
+  POST   & /login              & Public & Connexion (proxy Kernel) \\
+  POST   & /refresh            & Public & Renouvellement token \\
+  POST   & /logout             & JWT    & Déconnexion \\
+  POST   & /forgot-password    & Public & Demande reset mot de passe \\
+  POST   & /reset-password     & Public & Réinitialisation mot de passe \\
+  POST   & /confirm-email      & Public & Confirmation e-mail \\
+  GET    & /confirm-email      & Public & Redirect confirmation \\
+  \bottomrule
+\end{longtable}
+
+\subsection{Profil — \texttt{/api/me}}
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{@{}llll@{}}
+    \toprule
+    POST & /profile-picture & JWT & Upload photo de profil (Kernel) \\
+    POST & /files/upload    & JWT & Upload fichier générique \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Artiste — \texttt{/api}}
+
+\begin{longtable}{@{}llll@{}}
+  \caption{Endpoints Artiste} \label{tab:api-artist} \\
+  \toprule
+  \textbf{Méthode} & \textbf{Path} & \textbf{Auth} & \textbf{Description} \\
+  \midrule
+  \endfirsthead
+  GET  & /public/artists/\{slug\}       & Public  & Profil public artiste \\
+  GET  & /public/artists/search         & Public  & Recherche artistes \\
+  GET  & /artist/me                     & ARTIST  & Mon profil artiste \\
+  PUT  & /artist/me                     & ARTIST  & Modifier profil \\
+  GET  & /artist/me/analytics           & ARTIST  & Statistiques \\
+  \bottomrule
+\end{longtable}
+
+\subsection{Œuvres — \texttt{/api}}
+
+\begin{longtable}{@{}llll@{}}
+  \caption{Endpoints Artwork} \label{tab:api-artwork} \\
+  \toprule
+  \textbf{Méthode} & \textbf{Path} & \textbf{Auth} & \textbf{Description} \\
+  \midrule
+  \endfirsthead
+  GET    & /v1/public/\{slug\}/artworks           & Public       & Liste œuvres \\
+  GET    & /v1/public/\{slug\}/artworks/\{id\}     & Public       & Détail œuvre \\
+  POST   & /artworks                               & ARTIST       & Créer œuvre \\
+  PUT    & /artworks/\{id\}                        & ARTIST       & Modifier \\
+  PATCH  & /artworks/\{id\}/status                  & ARTIST       & Changer statut \\
+  POST   & /artworks/images/upload                 & ARTIST       & Upload image \\
+  POST   & /v1/public/\{slug\}/artworks/\{id\}/like  & ARTIST/BUYER & Liker \\
+  POST   & /v1/public/\{slug\}/artworks/\{id\}/comments & ARTIST/BUYER & Commenter \\
+  GET    & /public/artworks/latest                 & Public       & Dernières œuvres \\
+  GET    & /public/artworks/featured               & Public       & Œuvres mises en avant \\
+  \bottomrule
+\end{longtable}
+
+\subsection{Boutique — \texttt{/api/shop}}
+
+\begin{longtable}{@{}llll@{}}
+  \caption{Endpoints Shop} \label{tab:api-shop} \\
+  \toprule
+  \textbf{Méthode} & \textbf{Path} & \textbf{Auth} & \textbf{Description} \\
+  \midrule
+  \endfirsthead
+  POST  & /products                              & ARTIST & Créer produit \\
+  GET   & /v1/public/\{slug\}/products            & Public & Catalogue artiste \\
+  POST  & /v1/public/\{slug\}/orders              & BUYER  & Créer commande \\
+  POST  & /orders/\{id\}/checkout                  & BUYER  & Payer (CamPay) \\
+  GET   & /orders/my-purchases                   & BUYER  & Mes achats \\
+  GET   & /orders/my-sales                       & ARTIST & Mes ventes \\
+  PATCH & /orders/\{id\}/status                    & ARTIST & Mettre à jour statut \\
+  GET   & /inventory                             & ARTIST & Stock produits \\
+  \bottomrule
+\end{longtable}
+
+\subsection{Événements — \texttt{/api}}
+
+\begin{longtable}{@{}llll@{}}
+  \caption{Endpoints Event} \label{tab:api-event} \\
+  \toprule
+  \textbf{Méthode} & \textbf{Path} & \textbf{Auth} & \textbf{Description} \\
+  \midrule
+  \endfirsthead
+  GET    & /public/events                          & Public       & Liste événements \\
+  GET    & /v1/public/\{slug\}/events                 & Public       & Événements artiste \\
+  POST   & /events                                 & ARTIST       & Créer événement \\
+  POST   & /events/\{eventId\}/reservations          & BUYER/ARTIST & Réserver \\
+  POST   & /events/reservations/\{id\}/checkout      & BUYER/ARTIST & Payer billet \\
+  POST   & /events/tickets/validate                & ARTIST       & Valider QR code \\
+  \bottomrule
+\end{longtable}
+
+\subsection{Paiement et Wallet}
+
+\begin{table}[h]
+  \centering
+  \caption{Endpoints Payment / Wallet}
+  \label{tab:api-payment}
+  \small
+  \begin{tabular}{@{}llll@{}}
+    \toprule
+    \textbf{Méthode} & \textbf{Path} & \textbf{Auth} & \textbf{Description} \\
+    \midrule
+    POST & /api/payment/callback       & Public (webhook) & Callback CamPay \\
+    GET  & /api/payment/history        & JWT              & Historique paiements \\
+    GET  & /api/wallet/balance         & ARTIST           & Solde wallet \\
+    GET  & /api/wallet/transactions    & ARTIST           & Transactions \\
+    POST & /api/wallet/withdraw          & ARTIST           & Retrait Mobile Money \\
+    POST & /api/wallet/settings/payout   & ARTIST           & Config retrait \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Administration — \texttt{/api/admin}}
+
+\begin{longtable}{@{}llll@{}}
+  \caption{Endpoints Admin} \label{tab:api-admin} \\
+  \toprule
+  \textbf{Méthode} & \textbf{Path} & \textbf{Auth} & \textbf{Description} \\
+  \midrule
+  \endfirsthead
+  GET    & /artists/pending              & ADMIN & File d'attente artistes \\
+  POST   & /artists/\{id\}/approve        & ADMIN & Approuver + provisionner \\
+  POST   & /artists/\{id\}/reject         & ADMIN & Refuser inscription \\
+  GET    & /tenants                      & ADMIN & Liste tenants \\
+  PATCH  & /tenants/\{id\}/status         & ADMIN & Activer/désactiver tenant \\
+  GET    & /users                        & ADMIN & Liste utilisateurs \\
+  DELETE & /users/\{id\}                  & ADMIN & Supprimer utilisateur \\
+  GET    & /stats                        & ADMIN & Statistiques plateforme \\
+  GET    & /logs                         & ADMIN & Logs récents \\
+  \bottomrule
+\end{longtable}
+
+\section{WebSocket STOMP}
+
+\begin{table}[h]
+  \centering
+  \caption{Configuration WebSocket}
+  \label{tab:websocket}
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    \textbf{Paramètre} & \textbf{Valeur} \\
+    \midrule
+    Endpoint connexion   & \texttt{ws://host:8090/ws} (SockJS supporté) \\
+    Authentification     & Header \texttt{Authorization: Bearer <JWT>} \\
+    Destination envoi    & \texttt{/app/chat} \\
+    Destination réception & \texttt{/user/queue/messages} \\
+    Payload JSON         & \texttt{\{senderId, recipientId, content, timestamp\}} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Codes de réponse HTTP}
+
+\begin{table}[h]
+  \centering
+  \caption{Codes HTTP standards utilisés}
+  \label{tab:http-codes}
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    \textbf{Code} & \textbf{Signification} \\
+    \midrule
+    200 & Succès \\
+    201 & Ressource créée \\
+    400 & Requête invalide / validation échouée \\
+    401 & Non authentifié / JWT invalide \\
+    403 & Accès interdit (rôle insuffisant) \\
+    404 & Ressource introuvable \\
+    409 & Conflit (ex: e-mail déjà utilisé) \\
+    500 & Erreur serveur (Kernel indisponible, etc.) \\
+    \bottomrule
+  \end{tabular}
+\end{table}

@@ -1,0 +1,36 @@
+\babel@toc {french}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces Diagramme de contexte — écosystème YowPainter\ Backend}}{3}{figure.2.1}%
+\contentsline {figure}{\numberline {2.2}{\ignorespaces Isolation des données — schema-per-tenant}}{5}{figure.2.2}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Diagramme de cas d'utilisation — vue globale}}{10}{figure.4.1}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {5.1}{\ignorespaces Architecture hexagonale — découpage en couches}}{13}{figure.5.1}%
+\contentsline {figure}{\numberline {5.2}{\ignorespaces Diagramme de packages — structure modulaire}}{14}{figure.5.2}%
+\contentsline {figure}{\numberline {5.3}{\ignorespaces Diagramme de composants — flux de dépendances}}{14}{figure.5.3}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {6.1}{\ignorespaces Classes métier — Utilisateurs, wallet et abonnements}}{18}{figure.6.1}%
+\contentsline {figure}{\numberline {6.2}{\ignorespaces Classes métier — Module Artwork}}{19}{figure.6.2}%
+\contentsline {figure}{\numberline {6.3}{\ignorespaces Classes métier — Module Shop / Payment}}{20}{figure.6.3}%
+\contentsline {figure}{\numberline {6.4}{\ignorespaces Classes métier — Événements et Chat}}{21}{figure.6.4}%
+\contentsline {figure}{\numberline {6.5}{\ignorespaces Modèle entité-relation simplifié}}{22}{figure.6.5}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {7.1}{\ignorespaces Classes techniques — Module Auth (pattern hexagonal)}}{23}{figure.7.1}%
+\contentsline {figure}{\numberline {7.2}{\ignorespaces Classes techniques — Couche Kernel partagée}}{24}{figure.7.2}%
+\contentsline {figure}{\numberline {7.3}{\ignorespaces Classes techniques — Multi-tenancy Hibernate}}{24}{figure.7.3}%
+\contentsline {figure}{\numberline {7.4}{\ignorespaces Classes techniques — Module Payment}}{25}{figure.7.4}%
+\contentsline {figure}{\numberline {7.5}{\ignorespaces Classes techniques — Sécurité JWT}}{26}{figure.7.5}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {8.1}{\ignorespaces Séquence — Connexion utilisateur}}{27}{figure.8.1}%
+\contentsline {figure}{\numberline {8.2}{\ignorespaces Séquence — Provisioning artiste après approbation admin}}{28}{figure.8.2}%
+\contentsline {figure}{\numberline {8.3}{\ignorespaces Séquence — Paiement commande boutique via CamPay}}{28}{figure.8.3}%
+\contentsline {figure}{\numberline {8.4}{\ignorespaces Séquence — Envoi message chat temps réel}}{29}{figure.8.4}%
+\contentsline {figure}{\numberline {8.5}{\ignorespaces Séquence — Synchronisation statut commande via Kafka}}{29}{figure.8.5}%
+\contentsline {figure}{\numberline {8.6}{\ignorespaces Machine d'états — Statut artiste}}{30}{figure.8.6}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {9.1}{\ignorespaces Diagramme de déploiement — Développement local}}{31}{figure.9.1}%
+\contentsline {figure}{\numberline {9.2}{\ignorespaces Diagramme de déploiement — Architecture production cible}}{33}{figure.9.2}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }

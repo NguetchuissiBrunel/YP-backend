@@ -1,0 +1,46 @@
+% =============================================================================
+\chapter{Modèle de classes métier}
+% =============================================================================
+
+Ce chapitre présente le \textbf{modèle conceptuel de domaine} : entités métier,
+énumérations et relations, indépendamment des détails techniques d'implémentation.
+
+\section{Diagramme de classes — Noyau utilisateurs}
+
+\includediagram{class-user}{Classes métier — Utilisateurs, wallet et abonnements}
+
+\section{Diagramme de classes — Artworks}
+
+\includediagram{class-artwork}{Classes métier — Module Artwork}
+
+\section{Diagramme de classes — Commerce}
+
+\includediagram{class-shop}{Classes métier — Module Shop / Payment}
+
+\section{Diagramme de classes — Événements et Chat}
+
+\includediagram{class-event-chat}{Classes métier — Événements et Chat}
+
+\section{Modèle entité-relation global}
+
+\includediagram[width=0.95\textwidth]{er-global}{Modèle entité-relation simplifié}
+
+\section{Statuts métier clés}
+
+\begin{table}[h]
+  \centering
+  \caption{Énumérations et statuts métier}
+  \label{tab:enums}
+  \begin{tabular}{@{}llp{7cm}@{}}
+    \toprule
+    \textbf{Entité} & \textbf{Statuts / Valeurs} & \textbf{Signification} \\
+    \midrule
+    Artist.status & PENDING\_EMAIL, PENDING\_APPROVAL, ACTIVE, REJECTED & Cycle de vie inscription \\
+    Artwork.status & DRAFT, PUBLISHED, ARCHIVED, SOLD & Visibilité et disponibilité \\
+    Order.status & PENDING, PAID, SHIPPED, DELIVERED, CANCELLED & Cycle commande \\
+    Payment.status & PENDING, SUCCESS, FAILED, EXPIRED & État transaction CamPay \\
+    Reservation.status & PENDING, CONFIRMED, CANCELLED, EXPIRED & Réservation billet \\
+    SubscriptionPlan & FREE (15\%), PRO (10\%), ELITE (5\%) & Taux commission plateforme \\
+    \bottomrule
+  \end{tabular}
+\end{table}

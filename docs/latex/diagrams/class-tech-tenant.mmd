@@ -1,0 +1,35 @@
+classDiagram
+    class TenantSecurityFilter {
+        Resout organizationId depuis JWT
+    }
+
+    class CurrentTenantIdentifierResolverImpl {
+        +resolveCurrentTenantIdentifier()
+        retourne public ou tenant_orgId
+    }
+
+    class MultiTenantConnectionProviderImpl {
+        SET search_path TO tenant_xxx, public
+    }
+
+    class OrganizationContext {
+        ThreadLocal UUID
+    }
+
+    class TenantMigrationService {
+        Flyway par schema tenant
+    }
+
+    class TenantBootstrapper {
+        Migre schemas artistes ACTIVE
+    }
+
+    class TenantTransactionExecutor {
+        Execute code dans contexte tenant
+    }
+
+    TenantSecurityFilter --> OrganizationContext
+    OrganizationContext --> CurrentTenantIdentifierResolverImpl
+    CurrentTenantIdentifierResolverImpl --> MultiTenantConnectionProviderImpl
+    TenantMigrationService --> TenantBootstrapper
+    TenantTransactionExecutor --> OrganizationContext

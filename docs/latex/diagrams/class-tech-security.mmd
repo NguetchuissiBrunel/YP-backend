@@ -1,0 +1,33 @@
+classDiagram
+    class SecurityConfig {
+        SecurityFilterChain
+        CORS
+        Routes publiques
+    }
+
+    class KernelJwtAuthenticationConverter {
+        JWT vers Authentication
+    }
+
+    class KernelAuthorityMapper {
+        Roles Kernel vers ROLE_ARTIST BUYER ADMIN
+    }
+
+    class PublicAwareBearerTokenResolver {
+        Skip JWT sur routes publiques
+    }
+
+    class JwtTokenParser {
+        Extraction claims JWT
+    }
+
+    class UserDetailsServiceImpl {
+        Chargement AppUser local
+    }
+
+    SecurityConfig --> KernelJwtAuthenticationConverter
+    SecurityConfig --> KernelAuthorityMapper
+    SecurityConfig --> PublicAwareBearerTokenResolver
+    KernelJwtAuthenticationConverter --> JwtTokenParser
+    KernelJwtAuthenticationConverter --> KernelAuthorityMapper
+    KernelAuthorityMapper --> UserDetailsServiceImpl

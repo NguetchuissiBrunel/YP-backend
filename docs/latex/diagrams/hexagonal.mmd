@@ -1,0 +1,24 @@
+flowchart TB
+    subgraph Application["Couche APPLICATION"]
+        SVC[Services applicatifs<br/>AuthService, ShopService, EventService...]
+    end
+
+    subgraph Domaine["Couche DOMAINE"]
+        MODEL[Modèles metier<br/>AppUser, Artwork, Order, Payment...]
+        PORTS[Ports de sortie<br/>AppUserRepositoryPort, OrderRepositoryPort...]
+    end
+
+    subgraph Infrastructure["Couche INFRASTRUCTURE"]
+        IN[Adaptateurs IN<br/>REST Controllers, DTOs, WebSocket]
+        OUT[Adaptateurs OUT<br/>JPA, CamPay, Kernel HTTP, Mail]
+    end
+
+    PG[(PostgreSQL)]
+    EXT[Kernel / CamPay]
+
+    IN --> SVC
+    SVC --> MODEL
+    SVC --> PORTS
+    OUT -.->|implemente| PORTS
+    OUT --> PG
+    OUT --> EXT

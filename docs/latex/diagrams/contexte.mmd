@@ -1,0 +1,33 @@
+flowchart TB
+    subgraph Acteurs["Acteurs humains"]
+        Artist[Artiste]
+        Buyer[Acheteur]
+        Admin[Administrateur]
+    end
+
+    subgraph Client["Couche présentation"]
+        FE[Frontend Next.js<br/>Port 3000]
+    end
+
+    YOW["YowPainter Backend<br/>Port 8090<br/>API REST + WebSocket"]
+
+    subgraph Externes["Systèmes externes"]
+        Kernel[Kernel RT-Comops<br/>Port 8080]
+        CamPay[CamPay Mobile Money]
+        PG[(PostgreSQL 18)]
+        Mail[Serveur SMTP]
+        Kafka[Kafka optionnel]
+    end
+
+    Artist -->|Utilise via UI| FE
+    Buyer -->|Utilise via UI| FE
+    Admin -->|Utilise via UI| FE
+    FE -->|HTTP/JSON| YOW
+
+    YOW -->|X-Client-Id, X-Api-Key, JWT| Kernel
+    YOW -->|Collect / Withdraw| CamPay
+    CamPay -.->|Webhook callback| YOW
+    YOW -->|JDBC| PG
+    YOW -->|SMTP| Mail
+    Kernel -.->|Events business| Kafka
+    Kafka -.->|Consumer| YOW

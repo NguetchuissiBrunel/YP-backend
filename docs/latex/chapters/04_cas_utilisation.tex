@@ -1,0 +1,129 @@
+% =============================================================================
+\chapter{Cas d'utilisation}
+% =============================================================================
+
+\section{Diagramme général des cas d'utilisation}
+
+La figure~\ref{fig:uc-global} présente les cas d'utilisation principaux regroupés par acteur.
+
+\includediagram[width=0.98\textwidth]{uc-global}{Diagramme de cas d'utilisation — vue globale}
+
+\section{Description détaillée des cas d'utilisation principaux}
+
+\subsection{UC-01 : Inscription Artiste}
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{@{}p{3.5cm}p{10cm}@{}}
+    \toprule
+    \textbf{Identifiant} & UC-01 \\
+    \textbf{Nom} & Inscription Artiste \\
+    \textbf{Acteur principal} & Artiste (non authentifié) \\
+    \textbf{Préconditions} & Kernel accessible, e-mail valide \\
+    \textbf{Postconditions} & Compte créé, statut \texttt{PENDING\_EMAIL} puis \texttt{PENDING\_APPROVAL} \\
+    \midrule
+    \textbf{Scénario nominal} &
+    1. L'artiste envoie \texttt{POST /api/auth/register} avec \texttt{ROLE\_ARTIST}.\\
+    & 2. Le backend appelle Kernel sign-up (acteur BUSINESS/ART).\\
+    & 3. Création locale \texttt{AppUser} + \texttt{Artist} (slug auto-généré).\\
+    & 4. Retour avec message de confirmation e-mail.\\
+    & 5. Artiste confirme via \texttt{POST /api/auth/confirm-email}.\\
+    & 6. Statut passe à \texttt{PENDING\_APPROVAL}. \\
+    \textbf{Extensions} &
+    E1 : E-mail déjà utilisé → 409 Conflict.\\
+    E2 : Kernel indisponible → 500 avec message explicite. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{UC-02 : Validation Artiste par Admin}
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{@{}p{3.5cm}p{10cm}@{}}
+    \toprule
+    \textbf{Identifiant} & UC-02 \\
+    \textbf{Nom} & Validation et provisioning artiste \\
+    \textbf{Acteur principal} & Administrateur (\texttt{ROLE\_ADMIN}) \\
+    \textbf{Préconditions} & Artiste en \texttt{PENDING\_APPROVAL}, credentials bootstrap valides \\
+    \textbf{Postconditions} & Artiste \texttt{ACTIVE}, org Kernel créée, schéma tenant migré \\
+    \midrule
+    \textbf{Scénario nominal} &
+    1. Admin liste \texttt{GET /api/admin/artists/pending}.\\
+    & 2. Admin approuve \texttt{POST /api/admin/artists/\{id\}/approve} + MFA.\\
+    & 3. \texttt{KernelArtistProvisioningService} : login bootstrap, création org, plan COMMERCE, rôle ORGANIZATION\_ADMIN.\\
+    & 4. Migration Flyway du schéma tenant.\\
+    & 5. Statut artiste → \texttt{ACTIVE}. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{UC-03 : Achat d'une œuvre (Checkout)}
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{@{}p{3.5cm}p{10cm}@{}}
+    \toprule
+    \textbf{Identifiant} & UC-03 \\
+    \textbf{Nom} & Acheter une œuvre via Mobile Money \\
+    \textbf{Acteur principal} & Acheteur (\texttt{ROLE\_BUYER}) \\
+    \textbf{Préconditions} & Produit disponible, acheteur authentifié \\
+    \textbf{Postconditions} & Commande \texttt{PAID}, wallet artiste crédité (net commission) \\
+    \midrule
+    \textbf{Scénario nominal} &
+    1. Création commande \texttt{POST /api/shop/v1/public/\{slug\}/orders}.\\
+    & 2. Checkout \texttt{POST /api/shop/orders/\{id\}/checkout?phoneNumber=...}.\\
+    & 3. \texttt{PaymentService} → CamPay collect (USSD push).\\
+    & 4. Callback \texttt{POST /api/payment/callback} confirme le paiement.\\
+    & 5. Confirmation commande Kernel + crédit wallet + notification. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{UC-04 : Chat temps réel}
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{@{}p{3.5cm}p{10cm}@{}}
+    \toprule
+    \textbf{Identifiant} & UC-04 \\
+    \textbf{Nom} & Envoyer un message instantané \\
+    \textbf{Acteurs} & Artiste, Acheteur \\
+    \textbf{Préconditions} & Connexion WebSocket STOMP avec JWT valide \\
+    \midrule
+    \textbf{Scénario nominal} &
+    1. Client se connecte à \texttt{/ws} avec header \texttt{Authorization: Bearer ...}.\\
+    & 2. Envoi message vers \texttt{/app/chat}.\\
+    & 3. \texttt{ChatController.processMessage} persiste \texttt{ChatMessage}.\\
+    & 4. Dispatch vers \texttt{/user/queue/messages} du destinataire. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Matrice acteur / cas d'utilisation}
+
+\begin{table}[h]
+  \centering
+  \caption{Matrice de traçabilité acteurs ↔ cas d'utilisation}
+  \label{tab:uc-matrix}
+  \small
+  \begin{tabular}{@{}lcccc@{}}
+    \toprule
+    & \textbf{Artiste} & \textbf{Acheteur} & \textbf{Admin} & \textbf{Système} \\
+    \midrule
+    Auth / Profil        & ✓ & ✓ & ✓ & Kernel \\
+    Gestion œuvres         & ✓ &   &   &     \\
+    Boutique / Commandes   & ✓ & ✓ &   & Kernel, CamPay \\
+    Événements / Billets   & ✓ & ✓ &   & CamPay \\
+    Wallet / Retraits      & ✓ &   &   & CamPay \\
+    Abonnements            & ✓ &   &   & CamPay \\
+    Chat                   & ✓ & ✓ &   &     \\
+    Validation artistes    &   &   & ✓ & Kernel \\
+    Administration         &   &   & ✓ &     \\
+    \bottomrule
+  \end{tabular}
+\end{table}

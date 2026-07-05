@@ -1,0 +1,20 @@
+flowchart TB
+    subgraph Local["Environnement de developpement local"]
+        FE[Frontend :3000]
+        BE[YowPainter Backend :8090]
+        K[Kernel RT-Comops :8080]
+        PG[(PostgreSQL YowPainter :5432)]
+        PGK[(PostgreSQL Kernel)]
+        CP[CamPay API]
+        SMTP[SMTP]
+        KF[Kafka :9092]
+    end
+
+    FE -->|HTTP REST/WS| BE
+    BE -->|RestClient + JWT| K
+    BE --> PG
+    K --> PGK
+    BE --> CP
+    BE --> SMTP
+    BE -.-> KF
+    K -.-> KF

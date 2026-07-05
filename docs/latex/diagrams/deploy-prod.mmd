@@ -1,0 +1,24 @@
+flowchart TB
+    subgraph Internet["Internet"]
+        U[Utilisateurs]
+        LB[Load Balancer / CDN]
+        FE[Frontend Vercel/VPS]
+    end
+
+    subgraph DC["Datacenter / Cloud prive"]
+        BE1[YowPainter Instance 1]
+        BE2[YowPainter Instance 2]
+        K[Kernel RT-Comops]
+        PG[(PostgreSQL Primary)]
+        PGR[(PostgreSQL Replica)]
+    end
+
+    U --> FE
+    FE --> LB
+    LB --> BE1
+    LB --> BE2
+    BE1 --> K
+    BE2 --> K
+    BE1 --> PG
+    BE2 --> PG
+    PG -.-> PGR

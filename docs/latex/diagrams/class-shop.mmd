@@ -1,0 +1,47 @@
+classDiagram
+    class Product {
+        +UUID id
+        +UUID artistId
+        +UUID artworkId
+        +UUID kernelProductId
+        +String name
+        +BigDecimal price
+        +int stockQuantity
+        +boolean active
+    }
+
+    class Order {
+        +UUID id
+        +UUID buyerId
+        +UUID kernelSalesOrderId
+        +OrderStatus status
+        +BigDecimal totalAmount
+    }
+
+    class OrderItem {
+        +UUID id
+        +UUID productId
+        +int quantity
+        +BigDecimal unitPrice
+    }
+
+    class Payment {
+        +UUID id
+        +String referenceType
+        +UUID referenceId
+        +BigDecimal amount
+        +PaymentStatus status
+        +String campayReference
+    }
+
+    Product "0..1" --> Order
+    Order "1" --> "*" OrderItem
+    Payment --> Order : reference ORDER
+    Payment --> Reservation : reference RESERVATION
+
+    class Reservation {
+        +UUID id
+        +UUID userId
+        +UUID eventId
+        +ReservationStatus status
+    }

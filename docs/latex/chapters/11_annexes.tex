@@ -1,0 +1,158 @@
+% =============================================================================
+\chapter{Annexes}
+% =============================================================================
+
+\section{Glossaire}
+
+\begin{longtable}{@{}p{3.5cm}p{10cm}@{}}
+  \caption{Glossaire des termes} \label{tab:glossaire} \\
+  \toprule
+  \textbf{Terme} & \textbf{Définition} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{Terme} & \textbf{Définition} \\
+  \midrule
+  \endhead
+  Tenant & Espace de données isolé correspondant à un artiste (schéma PostgreSQL dédié) \\
+  Slug & Identifiant URL-friendly unique de l'artiste (ex: \texttt{lanslo-47d14}) \\
+  Kernel & Plateforme RT-Comops fournissant IAM, commerce, fichiers et notifications \\
+  ClientApplication & Application enregistrée dans le Kernel avec client-id et api-key \\
+  Provisioning & Création automatique de l'organisation Kernel et du schéma tenant \\
+  CamPay & Passerelle de paiement Mobile Money (MTN, Orange, MoMo Pay) au Cameroun \\
+  USSD Push & Notification de paiement envoyée sur le téléphone de l'acheteur \\
+  Port (hexagonal) & Interface définissant un contrat entre le domaine et l'infrastructure \\
+  Adaptateur & Implémentation concrète d'un port (JPA, HTTP, etc.) \\
+  JWKS & JSON Web Key Set — clés publiques pour validation JWT RS256 \\
+  STOMP & Protocole de messagerie sur WebSocket \\
+  Flyway & Outil de migration de schéma de base de données versionné \\
+  \bottomrule
+\end{longtable}
+
+\section{Matrice de traçabilité besoins / modules}
+
+\begin{table}[h]
+  \centering
+  \caption{Traçabilité BF → Modules}
+  \label{tab:trace}
+  \small
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    \textbf{Besoin} & \textbf{Module(s)} \\
+    \midrule
+    BF-01 à BF-03 & auth \\
+    BF-04, BF-17  & admin, auth \\
+    BF-05         & artist \\
+    BF-06         & artwork, file \\
+    BF-07         & shop, payment \\
+    BF-08         & event, payment \\
+    BF-09, BF-10  & payment \\
+    BF-11         & subscription, payment \\
+    BF-12         & chat \\
+    BF-13         & notification \\
+    BF-14         & news \\
+    BF-15         & search \\
+    BF-16         & file \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Structure des schémas de base de données}
+
+\subsection{Schéma \texttt{public}}
+
+\begin{table}[h]
+  \centering
+  \caption{Tables du schéma public}
+  \label{tab:db-public}
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    \textbf{Table} & \textbf{Contenu} \\
+    \midrule
+    app\_user & Utilisateurs (artistes, acheteurs, admins) \\
+    artist & Extension profil artiste (JOINED inheritance) \\
+    wallet & Portefeuille artiste \\
+    wallet\_transaction & Mouvements wallet \\
+    chat\_message & Messages chat \\
+    chat\_room & Salles de discussion \\
+    refresh\_token & Tokens de rafraîchissement \\
+    pending\_provision\_session & Sessions MFA provisioning \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Schéma \texttt{tenant\_\{organizationId\}}}
+
+\begin{table}[h]
+  \centering
+  \caption{Tables par tenant artiste}
+  \label{tab:db-tenant}
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    \textbf{Table} & \textbf{Contenu} \\
+    \midrule
+    artwork, artwork\_image, artwork\_video & Œuvres et médias \\
+    artwork\_like, artwork\_comment & Interactions sociales \\
+    product, order, order\_item & Commerce \\
+    payment & Transactions CamPay \\
+    event, reservation, ticket & Événements et billets \\
+    news & Actualités \\
+    subscription & Abonnement artiste \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Checklist de mise en production}
+
+\begin{enumerate}
+  \item Créer \texttt{ClientApplication} \texttt{yowpainter-backend} dans le Kernel
+  \item Configurer toutes les variables d'environnement (pas de secrets en dur)
+  \item Définir \texttt{KSM\_KERNEL\_AUTO\_PROVISION\_ARTISTS=false} pour validation manuelle
+  \item Configurer credentials bootstrap admin + MFA
+  \item Vérifier connexion PostgreSQL et droits création schémas
+  \item Configurer CamPay production (callback URL publique)
+  \item Configurer SMTP pour e-mails transactionnels
+  \item Activer Kafka si synchronisation commandes requise
+  \item Sécuriser routes chat (\texttt{permitAll} → authentification requise)
+  \item Tester health checks et Swagger
+  \item Exécuter \texttt{mvn test} en CI
+\end{enumerate}
+
+\section{Historique des versions du document}
+
+\begin{table}[h]
+  \centering
+  \caption{Historique documentaire}
+  \label{tab:history}
+  \begin{tabular}{@{}llll@{}}
+    \toprule
+    \textbf{Version} & \textbf{Date} & \textbf{Auteur} & \textbf{Modifications} \\
+    \midrule
+    1.0 & Juillet 2026 & Équipe YowPainter & Création initiale du CAC \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Index des figures}
+
+Ce document contient les diagrammes suivants :
+
+\begin{itemize}[noitemsep]
+  \item Figure~\ref{fig:contexte} — Diagramme de contexte
+  \item Figure~\ref{fig:multitenant} — Isolation multi-tenant
+  \item Figure~\ref{fig:uc-global} — Cas d'utilisation globaux
+  \item Figure~\ref{fig:hexagonal} — Architecture hexagonale
+  \item Figure~\ref{fig:packages} — Diagramme de packages
+  \item Figure~\ref{fig:composants} — Diagramme de composants
+  \item Figures~\ref{fig:class-user} à~\ref{fig:class-event-chat} — Classes métier
+  \item Figures~\ref{fig:class-tech-auth} à~\ref{fig:class-tech-security} — Classes techniques
+  \item Figures~\ref{fig:seq-login} à~\ref{fig:seq-kafka} — Diagrammes de séquence
+  \item Figure~\ref{fig:state-artist} — Machine d'états artiste
+  \item Figures~\ref{fig:deploy-local} et~\ref{fig:deploy-prod} — Déploiement
+\end{itemize}
+
+\vfill
+\begin{center}
+  \rule{0.5\textwidth}{0.4pt}\\[0.5em]
+  \textit{Fin du Cahier d'Analyse et de Conception — \yow\ Backend v1.0.0-SNAPSHOT}
+\end{center}

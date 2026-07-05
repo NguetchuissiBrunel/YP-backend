@@ -1,0 +1,52 @@
+classDiagram
+    class Artwork {
+        +UUID id
+        +UUID artistId
+        +UUID organizationId
+        +String title
+        +String description
+        +ArtworkTechnique technique
+        +ArtworkStyle style
+        +ArtworkStatus status
+        +int viewCount
+        +int likeCount
+    }
+
+    class ArtworkImage {
+        +UUID id
+        +String url
+        +int sortOrder
+        +boolean isPrimary
+    }
+
+    class ArtworkVideo {
+        +UUID id
+        +String url
+        +String thumbnailUrl
+    }
+
+    class ArtworkLike {
+        +UUID id
+        +UUID userId
+        +UUID artworkId
+    }
+
+    class ArtworkComment {
+        +UUID id
+        +UUID userId
+        +String content
+    }
+
+    class ArtworkStatus {
+        <<enumeration>>
+        DRAFT
+        PUBLISHED
+        ARCHIVED
+        SOLD
+    }
+
+    Artwork "1" --> "*" ArtworkImage
+    Artwork "1" --> "*" ArtworkVideo
+    Artwork "1" --> "*" ArtworkLike
+    Artwork "1" --> "*" ArtworkComment
+    Artwork --> ArtworkStatus
