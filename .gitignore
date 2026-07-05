@@ -16,7 +16,8 @@ application-dev.properties
 *.iws
 *.iml
 *.ipr
-out/
+# Dossier de sortie IntelliJ (racine uniquement — ne pas matcher domain/port/out)
+/out/
 cmake-build-*/
 
 # IDE - VS Code
