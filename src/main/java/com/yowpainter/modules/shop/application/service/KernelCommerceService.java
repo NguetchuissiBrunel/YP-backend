@@ -107,9 +107,11 @@ public class KernelCommerceService {
         }
         try {
             OrganizationContext.setOrganizationId(artist.getOrganizationId());
-            return productRepository.findByArtistIdAndIsActiveTrue(artist.getId()).stream()
-                    .map(this::mapToProductResponse)
-                    .collect(Collectors.toList());
+            return tenantTransactionExecutor.execute(() ->
+                productRepository.findByArtistIdAndIsActiveTrue(artist.getId()).stream()
+                        .map(this::mapToProductResponse)
+                        .collect(Collectors.toList())
+            );
         } finally {
             OrganizationContext.clear();
         }

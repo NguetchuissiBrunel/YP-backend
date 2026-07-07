@@ -60,16 +60,16 @@ public class GlobalAggregationTest {
         // Register Artist A
         RegisterRequest regA = RegisterRequest.builder()
                 .firstName("A").lastName("Artist").email("a@test.com")
-                .password("Pass123").role(UserRole.ROLE_ARTIST).artistName("ShopA").build();
-        MvcResult resA = mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(regA))).andReturn();
-        slugA = objectMapper.readValue(resA.getResponse().getContentAsString(), AuthResponse.class).getTenantId();
+                .password("Pass123").role(UserRole.ROLE_ARTIST).artistName("ShopA").slug("shopa").build();
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(regA))).andExpect(status().isCreated());
+        slugA = "shopa";
 
         // Register Artist B
         RegisterRequest regB = RegisterRequest.builder()
                 .firstName("B").lastName("Artist").email("b@test.com")
-                .password("Pass123").role(UserRole.ROLE_ARTIST).artistName("ShopB").build();
-        MvcResult resB = mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(regB))).andReturn();
-        slugB = objectMapper.readValue(resB.getResponse().getContentAsString(), AuthResponse.class).getTenantId();
+                .password("Pass123").role(UserRole.ROLE_ARTIST).artistName("ShopB").slug("shopb").build();
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(regB))).andExpect(status().isCreated());
+        slugB = "shopb";
 
         // Login A
         tokenA = login("a@test.com");

@@ -99,11 +99,16 @@ public class EventService {
         if (artist.getOrganizationId() == null) {
             return List.of();
         }
+        LocalDateTime now = LocalDateTime.now();
         try {
             OrganizationContext.setOrganizationId(artist.getOrganizationId());
-            return tenantTransactionExecutor.execute(() -> 
+            return tenantTransactionExecutor.execute(() ->
                 eventRepository.findByArtistId(artist.getId()).stream()
                         .filter(e -> e.getStatus() == EventStatus.PUBLISHED)
+                        .filter(e -> {
+                            LocalDateTime end = e.getEndDateTime() != null ? e.getEndDateTime() : e.getStartDateTime();
+                            return end != null && end.isAfter(now);
+                        })
                         .map(this::mapToResponse)
                         .collect(Collectors.toList())
             );
@@ -155,13 +160,18 @@ public class EventService {
     public List<EventResponse> searchEvents(String query) {
         List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
         List<EventResponse> allEvents = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
         for (Artist artist : activeArtists) {
             if (artist.getOrganizationId() == null) continue;
             try {
                 OrganizationContext.setOrganizationId(artist.getOrganizationId());
-                List<EventResponse> tenantEvents = tenantTransactionExecutor.execute(() -> 
+                List<EventResponse> tenantEvents = tenantTransactionExecutor.execute(() ->
                     eventRepository.searchPublicEvents(query).stream()
                             .filter(e -> artist.getId().equals(e.getArtistId()))
+                            .filter(e -> {
+                                LocalDateTime end = e.getEndDateTime() != null ? e.getEndDateTime() : e.getStartDateTime();
+                                return end != null && end.isAfter(now);
+                            })
                             .map(this::mapToResponse)
                             .collect(Collectors.toList())
                 );

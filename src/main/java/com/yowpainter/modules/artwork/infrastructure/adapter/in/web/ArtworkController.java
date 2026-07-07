@@ -46,7 +46,7 @@ public class ArtworkController {
     @PreAuthorize("permitAll()")
     @Operation(summary = "Voir les details d'une oeuvre dans une boutique")
     public ResponseEntity<ArtworkResponse> getArtwork(@PathVariable String artistSlug, @PathVariable UUID id) {
-        return ResponseEntity.ok(artworkService.getArtworkById(id));
+        return ResponseEntity.ok(artworkService.getArtworkByIdAndArtistSlug(id, artistSlug));
     }
 
     @GetMapping("/v1/public/{artistSlug}/artworks/search")

@@ -199,9 +199,19 @@ public class ArtworkService {
     @Transactional(readOnly = true)
     public List<ArtworkResponse> getPublicArtworksByArtistSlug(String slug) {
         Artist artist = artistRepository.findBySlug(slug).orElseThrow(() -> new IllegalArgumentException("Artiste non trouve"));
-        return artworkRepository.findPublicArtworksByArtistId(artist.getId()).stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        if (artist.getOrganizationId() == null) {
+            return List.of();
+        }
+        try {
+            OrganizationContext.setOrganizationId(artist.getOrganizationId());
+            return tenantTransactionExecutor.execute(() ->
+                artworkRepository.findPublicArtworksByArtistId(artist.getId()).stream()
+                        .map(this::mapToResponse)
+                        .collect(Collectors.toList())
+            );
+        } finally {
+            OrganizationContext.clear();
+        }
     }
 
     @Transactional(readOnly = true)
@@ -226,6 +236,27 @@ public class ArtworkService {
         artwork.setViewCount(artwork.getViewCount() + 1);
         artworkRepository.save(artwork);
         return mapToResponse(artwork);
+    }
+
+    @Transactional
+    public ArtworkResponse getArtworkByIdAndArtistSlug(UUID id, String artistSlug) {
+        Artist artist = artistRepository.findBySlug(artistSlug)
+                .orElseThrow(() -> new IllegalArgumentException("Artiste non trouve"));
+        if (artist.getOrganizationId() == null) {
+            throw new IllegalArgumentException("Organisation de l'artiste manquante");
+        }
+        try {
+            OrganizationContext.setOrganizationId(artist.getOrganizationId());
+            return tenantTransactionExecutor.execute(() -> {
+                Artwork artwork = artworkRepository.findById(id)
+                        .orElseThrow(() -> new IllegalArgumentException("Oeuvre non trouvee"));
+                artwork.setViewCount(artwork.getViewCount() + 1);
+                artworkRepository.save(artwork);
+                return mapToResponse(artwork);
+            });
+        } finally {
+            OrganizationContext.clear();
+        }
     }
 
     @Transactional(readOnly = true)
@@ -260,9 +291,19 @@ public class ArtworkService {
     @Transactional(readOnly = true)
     public List<ArtworkResponse> searchArtworksByArtistSlug(String slug, String query) {
         Artist artist = artistRepository.findBySlug(slug).orElseThrow(() -> new IllegalArgumentException("Artiste non trouve"));
-        return artworkRepository.searchPublicArtworksByArtistId(artist.getId(), query).stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        if (artist.getOrganizationId() == null) {
+            return List.of();
+        }
+        try {
+            OrganizationContext.setOrganizationId(artist.getOrganizationId());
+            return tenantTransactionExecutor.execute(() ->
+                artworkRepository.searchPublicArtworksByArtistId(artist.getId(), query).stream()
+                        .map(this::mapToResponse)
+                        .collect(Collectors.toList())
+            );
+        } finally {
+            OrganizationContext.clear();
+        }
     }
 
     @Transactional(readOnly = true)
