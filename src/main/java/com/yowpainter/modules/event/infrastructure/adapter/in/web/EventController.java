@@ -146,6 +146,14 @@ public class EventController {
         return ResponseEntity.ok(eventService.getMyEvents(email));
     }
 
+    @GetMapping("/events/reservations/me")
+    @PreAuthorize("hasAnyRole('BUYER', 'ARTIST')")
+    @Operation(summary = "Lister mes billets / réservations (Acheteur/Amateur)")
+    public ResponseEntity<List<ReservationResponse>> getMyReservations(Authentication authentication) {
+        String email = authenticatedUserResolver.requireEmail(authentication);
+        return ResponseEntity.ok(eventService.getMyReservations(email));
+    }
+
     @PutMapping("/events/{id}")
     @PreAuthorize("hasRole('ARTIST')")
     @Operation(summary = "Modifier un evenement (Artiste proprietaire)")

@@ -172,6 +172,36 @@ public class EventService {
     }
 
     @Transactional(readOnly = true)
+    public List<ReservationResponse> getMyReservations(String email) {
+        AppUser user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouve"));
+
+        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        List<ReservationResponse> allReservations = new ArrayList<>();
+
+        for (Artist artist : activeArtists) {
+            if (artist.getOrganizationId() == null) continue;
+            try {
+                OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                List<ReservationResponse> tenantReservations = tenantTransactionExecutor.execute(() ->
+                    reservationRepository.findByUserId(user.getId()).stream()
+                            .map(this::mapToReservationResponse)
+                            .collect(Collectors.toList())
+                );
+                allReservations.addAll(tenantReservations);
+            } catch (Exception e) {
+                log.error("Failed to query reservations for tenant {}", artist.getOrganizationId(), e);
+            } finally {
+                OrganizationContext.clear();
+            }
+        }
+
+        return allReservations.stream()
+                .sorted(Comparator.comparing(ReservationResponse::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public EventResponse getEventById(UUID id) {
         if (OrganizationContext.getOrganizationId() != null) {
             return mapToResponse(eventRepository.findById(id).orElseThrow());
@@ -546,6 +576,8 @@ public class EventService {
                 .status(res.getStatus())
                 .createdAt(res.getReservedAt() != null ? res.getReservedAt().atZone(java.time.ZoneId.systemDefault()).toInstant() : null)
                 .qrCodeData(qrCode != null ? qrCode : res.getId().toString())
+                .eventLocation(res.getEvent().getLocation())
+                .ticketPrice(res.getEvent().getTicketPrice())
                 .build();
     }
 

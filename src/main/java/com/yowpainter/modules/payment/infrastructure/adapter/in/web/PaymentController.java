@@ -22,16 +22,16 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/payment")
 @RequiredArgsConstructor
-@Tag(name = "Payments", description = "Intégration Mobile Money (MTN, Orange) via CamPay")
+@Tag(name = "Payments", description = "Gestion des paiements — intégration Kernel à venir")
 public class PaymentController {
 
     private final PaymentService paymentService;
     private final AuthenticatedUserResolver authenticatedUserResolver;
 
     @PostMapping("/callback")
-    @Operation(summary = "Point d'entrée pour les callbacks CamPay")
-    public ResponseEntity<String> handleCampayCallback(@RequestBody Map<String, String> payload) {
-        log.info("Received CamPay Callback: {}", payload);
+    @Operation(summary = "Point d'entrée pour les callbacks de paiement (Kernel — à venir)")
+    public ResponseEntity<String> handlePaymentCallback(@RequestBody Map<String, String> payload) {
+        log.info("Received payment callback: {}", payload);
 
         String status = payload.get("status");
         String reference = payload.get("reference");

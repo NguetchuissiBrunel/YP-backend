@@ -9,4 +9,5 @@ public interface ReservationJpaRepository extends JpaRepository<Reservation, jav
     @org.springframework.data.jpa.repository.Query("SELECT r FROM Reservation r WHERE r.event.id = :eventId")
     java.util.List<Reservation> findByEventId(@org.springframework.data.repository.query.Param("eventId") UUID eventId);
     java.util.List<Reservation> findByStatusAndReservedAtBefore(com.yowpainter.modules.event.domain.model.ReservationStatus status, java.time.LocalDateTime reservedAt);
+    java.util.List<Reservation> findByUserId(UUID userId);
 }

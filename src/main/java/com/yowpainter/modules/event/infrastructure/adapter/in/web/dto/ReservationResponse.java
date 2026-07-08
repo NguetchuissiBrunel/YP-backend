@@ -19,4 +19,6 @@ public class ReservationResponse {
     private ReservationStatus status;
     private Instant createdAt;
     private String qrCodeData;
+    private String eventLocation;
+    private java.math.BigDecimal ticketPrice;
 }

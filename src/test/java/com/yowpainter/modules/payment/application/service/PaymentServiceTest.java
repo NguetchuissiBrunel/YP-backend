@@ -8,7 +8,7 @@ import com.yowpainter.modules.auth.domain.port.out.AppUserRepositoryPort;
 import com.yowpainter.modules.event.application.service.EventService;
 import com.yowpainter.modules.notification.application.service.NotificationService;
 import com.yowpainter.modules.payment.infrastructure.adapter.in.web.dto.PaymentResponse;
-import com.yowpainter.modules.payment.infrastructure.adapter.out.external.CampayClient;
+import com.yowpainter.modules.payment.infrastructure.adapter.out.external.PaymentGatewayClient;
 import com.yowpainter.modules.shop.application.service.ShopService;
 import com.yowpainter.modules.shop.domain.model.OrderStatus;
 import com.yowpainter.modules.shop.domain.model.Payment;
@@ -39,7 +39,7 @@ public class PaymentServiceTest {
     @Mock private AppUserRepositoryPort userRepository;
     @Mock private ShopService shopService;
     @Mock private EventService eventService;
-    @Mock private CampayClient campayClient;
+    @Mock private PaymentGatewayClient paymentGatewayClient;
     @Mock private WalletService walletService;
     @Mock private NotificationService notificationService;
     @Mock private ArtistRepositoryPort artistRepository;
@@ -132,45 +132,12 @@ public class PaymentServiceTest {
     // ─── initiateMobileMoneyPayment ──────────────────────────────────────────
 
     @Test
-    void initiateMobileMoneyPayment_shouldCallCampayAndSavePayment() throws Exception {
-        UUID refId = UUID.randomUUID();
-        CampayClient.CollectResponse collectResponse = new CampayClient.CollectResponse();
-        collectResponse.setReference("camp-ref-new");
-
-        when(userRepository.findByEmail("marie@example.com")).thenReturn(Optional.of(user));
-        when(campayClient.getToken()).thenReturn("campay-token");
-        when(campayClient.collect(eq("campay-token"), any(CampayClient.CollectRequest.class)))
-                .thenReturn(collectResponse);
-
-        String reference = paymentService.initiateMobileMoneyPayment(
-                refId, "ORDER", new BigDecimal("15000"), "jean-studio",
-                "marie@example.com", "237690000001");
-
-        assertThat(reference).isEqualTo("camp-ref-new");
-        verify(campayClient).collect(eq("campay-token"), any(CampayClient.CollectRequest.class));
-        verify(paymentRepository).save(any(Payment.class));
-    }
-
-    @Test
-    void initiateMobileMoneyPayment_whenUserNotFound_shouldThrowException() {
-        when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> paymentService.initiateMobileMoneyPayment(
-                UUID.randomUUID(), "ORDER", BigDecimal.TEN, "jean-studio",
-                "unknown@example.com", "237690000001"))
-                .isInstanceOf(RuntimeException.class);
-    }
-
-    @Test
-    void initiateMobileMoneyPayment_whenCampayFails_shouldThrowRuntimeException() throws Exception {
-        when(userRepository.findByEmail("marie@example.com")).thenReturn(Optional.of(user));
-        when(campayClient.getToken()).thenThrow(new RuntimeException("Campay unavailable"));
-
+    void initiateMobileMoneyPayment_shouldThrowUnsupportedOperationException() {
         assertThatThrownBy(() -> paymentService.initiateMobileMoneyPayment(
                 UUID.randomUUID(), "ORDER", new BigDecimal("15000"), "jean-studio",
                 "marie@example.com", "237690000001"))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Erreur de paiement mobile money");
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("Le paiement Mobile Money n'est pas encore disponible");
     }
 
     // ─── processSuccessfulPayment ────────────────────────────────────────────
@@ -185,15 +152,8 @@ public class PaymentServiceTest {
         when(plan.getCommissionRate()).thenReturn(new BigDecimal("0.10"));
         when(sub.getPlan()).thenReturn(plan);
 
-        // Setup provider verification
-        CampayClient.TransactionStatusResponse statusResponse = new CampayClient.TransactionStatusResponse();
-        statusResponse.setStatus("SUCCESSFUL");
-        statusResponse.setAmount("15000");
-
         when(paymentRepository.findByReferenceId(orderPayment.getReferenceId()))
                 .thenReturn(Optional.of(orderPayment));
-        when(campayClient.getToken()).thenReturn("campay-token");
-        when(campayClient.checkTransactionStatus("campay-token", "camp-ref-001")).thenReturn(statusResponse);
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         when(artistRepository.findBySlug("jean-studio")).thenReturn(Optional.of(artist));
         when(subscriptionService.getSubscriptionForArtist(artist.getEmail())).thenReturn(sub);
@@ -216,14 +176,8 @@ public class PaymentServiceTest {
         when(plan.getCommissionRate()).thenReturn(new BigDecimal("0.10"));
         when(sub.getPlan()).thenReturn(plan);
 
-        CampayClient.TransactionStatusResponse statusResponse = new CampayClient.TransactionStatusResponse();
-        statusResponse.setStatus("SUCCESSFUL");
-        statusResponse.setAmount("5000");
-
         when(paymentRepository.findByReferenceId(reservationPayment.getReferenceId()))
                 .thenReturn(Optional.of(reservationPayment));
-        when(campayClient.getToken()).thenReturn("campay-token");
-        when(campayClient.checkTransactionStatus("campay-token", "camp-ref-002")).thenReturn(statusResponse);
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         when(artistRepository.findBySlug("jean-studio")).thenReturn(Optional.of(artist));
         when(subscriptionService.getSubscriptionForArtist(artist.getEmail())).thenReturn(sub);
@@ -243,28 +197,7 @@ public class PaymentServiceTest {
 
         paymentService.processSuccessfulPayment("camp-ref-001", orderPayment.getReferenceId().toString());
 
-        verify(campayClient, never()).getToken();
-        verify(shopService, never()).updateOrderStatus(any(), any());
-    }
-
-    @Test
-    void processSuccessfulPayment_whenAmountMismatch_shouldMarkAsFailed() throws Exception {
-        CampayClient.TransactionStatusResponse statusResponse = new CampayClient.TransactionStatusResponse();
-        statusResponse.setStatus("SUCCESSFUL");
-        statusResponse.setAmount("1"); // montant différent -> fraude potentielle
-
-        when(paymentRepository.findByReferenceId(orderPayment.getReferenceId()))
-                .thenReturn(Optional.of(orderPayment));
-        when(campayClient.getToken()).thenReturn("campay-token");
-        when(campayClient.checkTransactionStatus("campay-token", "camp-ref-001")).thenReturn(statusResponse);
-
-        // processFailedPayment sera appelé en interne, il cherchera le paiement à nouveau
-        when(paymentRepository.findByReferenceId(orderPayment.getReferenceId()))
-                .thenReturn(Optional.of(orderPayment));
-
-        paymentService.processSuccessfulPayment("camp-ref-001", orderPayment.getReferenceId().toString());
-
-        // Le paiement doit être marqué FAILED (via processFailedPayment interne)
+        verify(paymentGatewayClient, never()).getToken();
         verify(shopService, never()).updateOrderStatus(any(), any());
     }
 

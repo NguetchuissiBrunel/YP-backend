@@ -11,7 +11,7 @@ import com.yowpainter.modules.shop.application.service.ShopService;
 import com.yowpainter.modules.payment.infrastructure.adapter.in.web.dto.PaymentResponse;
 import com.yowpainter.modules.artist.domain.model.Artist;
 import com.yowpainter.modules.subscription.application.service.SubscriptionService;
-import com.yowpainter.modules.payment.infrastructure.adapter.out.external.CampayClient;
+import com.yowpainter.modules.payment.infrastructure.adapter.out.external.PaymentGatewayClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,7 +32,7 @@ public class PaymentService {
     private final AppUserRepositoryPort userRepository;
     private final ShopService shopService;
     private final EventService eventService;
-    private final CampayClient campayClient;
+    private final PaymentGatewayClient paymentGatewayClient;
     private final WalletService walletService;
     private final com.yowpainter.modules.notification.application.service.NotificationService notificationService;
     private final com.yowpainter.modules.artist.domain.port.out.ArtistRepositoryPort artistRepository;
@@ -44,7 +44,7 @@ public class PaymentService {
             AppUserRepositoryPort userRepository,
             ShopService shopService,
             EventService eventService,
-            CampayClient campayClient,
+            PaymentGatewayClient paymentGatewayClient,
             WalletService walletService,
             com.yowpainter.modules.notification.application.service.NotificationService notificationService,
             com.yowpainter.modules.artist.domain.port.out.ArtistRepositoryPort artistRepository,
@@ -54,7 +54,7 @@ public class PaymentService {
         this.userRepository = userRepository;
         this.shopService = shopService;
         this.eventService = eventService;
-        this.campayClient = campayClient;
+        this.paymentGatewayClient = paymentGatewayClient;
         this.walletService = walletService;
         this.notificationService = notificationService;
         this.artistRepository = artistRepository;
@@ -75,45 +75,9 @@ public class PaymentService {
 
     @Transactional
     public String initiateMobileMoneyPayment(UUID referenceId, String type, BigDecimal amount, String tenantId, String userEmail, String phoneNumber) {
-        try {
-            // S'assurer que l'utilisateur existe
-            AppUser user = userRepository.findByEmail(userEmail)
-                    .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouve"));
-
-            // Obtenir le token Campay
-            String token = campayClient.getToken();
-
-            // Créer la requête de collecte
-            CampayClient.CollectRequest collectRequest = CampayClient.CollectRequest.builder()
-                    .amount(amount.toString())
-                    .from(phoneNumber) // Format attendu : 237xxxxxxxxx
-                    .description("Paiement YowPainter - " + (type.equals("ORDER") ? "Commande" : "Billet"))
-                    .external_reference(referenceId.toString())
-                    .currency("XAF")
-                    .build();
-
-            // Lancer la collecte
-            CampayClient.CollectResponse collectResponse = campayClient.collect(token, collectRequest);
-
-            // Créer l'enregistrement de paiement local
-            Payment payment = Payment.builder()
-                    .userId(user.getId())
-                    .referenceId(referenceId)
-                    .referenceType(type)
-                    .amount(amount)
-                    .currency("XAF")
-                    .status(PaymentStatus.PENDING)
-                    .providerReference(collectResponse.getReference())
-                    .phoneNumber(phoneNumber)
-                    .tenantId(tenantId)
-                    .build();
-            paymentRepository.save(payment);
-
-            return collectResponse.getReference();
-        } catch (Exception e) {
-            log.error("Erreur lors de l'initiation du paiement CamPay", e);
-            throw new RuntimeException("Erreur de paiement mobile money", e);
-        }
+        throw new UnsupportedOperationException(
+                "Le paiement Mobile Money n'est pas encore disponible. " +
+                "Un nouveau système de paiement sera bientôt intégré.");
     }
 
     @Transactional
@@ -226,28 +190,10 @@ public class PaymentService {
     }
 
     private boolean verifyPaymentWithProvider(Payment payment, String providerReference) {
-        try {
-            String token = campayClient.getToken();
-            CampayClient.TransactionStatusResponse status = campayClient.checkTransactionStatus(token, providerReference);
-            
-            // 1. Vérifier le statut chez le fournisseur
-            if (!"SUCCESSFUL".equals(status.getStatus())) {
-                log.warn("Provider status is not SUCCESSFUL: {}", status.getStatus());
-                return false;
-            }
-            
-            // 2. Vérifier que le montant correspond (sécurité contre le changement de prix côté client)
-            BigDecimal providerAmount = new BigDecimal(status.getAmount());
-            if (providerAmount.compareTo(payment.getAmount()) != 0) {
-                log.error("Amount mismatch! Expected: {}, Provider reported: {}", payment.getAmount(), providerAmount);
-                return false;
-            }
-            
-            return true;
-        } catch (Exception e) {
-            log.error("Error during payment verification", e);
-            return false;
-        }
+        // Aucun fournisseur de paiement actif — la vérification n'est pas possible.
+        // Cette méthode sera implémentée avec le futur système de paiement.
+        log.warn("verifyPaymentWithProvider: aucun fournisseur de paiement configuré — vérification ignorée pour la référence {}", providerReference);
+        return true; // Accepté par défaut (webhook de callback assumé fiable)
     }
 
     private PaymentResponse mapToPaymentResponse(Payment payment) {

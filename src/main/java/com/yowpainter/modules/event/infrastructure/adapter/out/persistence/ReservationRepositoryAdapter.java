@@ -31,5 +31,10 @@ public class ReservationRepositoryAdapter implements ReservationRepositoryPort {
     @Override
     public java.util.List<Reservation> findByStatusAndReservedAtBefore(com.yowpainter.modules.event.domain.model.ReservationStatus status, java.time.LocalDateTime reservedAt) {
         return jpaRepository.findByStatusAndReservedAtBefore(status, reservedAt);
+     }
+
+    @Override
+    public java.util.List<Reservation> findByUserId(UUID userId) {
+        return jpaRepository.findByUserId(userId);
     }
 }
