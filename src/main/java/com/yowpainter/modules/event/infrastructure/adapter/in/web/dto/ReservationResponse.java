@@ -4,7 +4,7 @@ import com.yowpainter.modules.event.domain.model.ReservationStatus;
 import lombok.Builder;
 import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Data
@@ -17,5 +17,6 @@ public class ReservationResponse {
     private String userName;
     private String userEmail;
     private ReservationStatus status;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
+    private String qrCodeData;
 }

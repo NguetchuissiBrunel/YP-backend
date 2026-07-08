@@ -129,8 +129,8 @@ public class EventServiceTest {
         EventCreateRequest request = EventCreateRequest.builder()
                 .name("Vernissage d'Art")
                 .description("Une belle exposition")
-                .startDateTime(event.getStartDateTime())
-                .endDateTime(event.getEndDateTime())
+                .startDateTime(event.getStartDateTime().toInstant(java.time.ZoneOffset.UTC))
+                .endDateTime(event.getEndDateTime().toInstant(java.time.ZoneOffset.UTC))
                 .location("Paris")
                 .type(EventType.MEETUP)
                 .maxCapacity(10)
@@ -152,6 +152,7 @@ public class EventServiceTest {
     @Test
     void getEventsByArtistId_shouldReturnList() {
         UUID artistId = artist.getId();
+        when(artistRepository.findById(artistId)).thenReturn(Optional.of(artist));
         when(eventRepository.findByArtistId(artistId)).thenReturn(List.of(event));
 
         List<EventResponse> result = eventService.getEventsByArtistId(artistId);
@@ -315,8 +316,8 @@ public class EventServiceTest {
         EventCreateRequest request = EventCreateRequest.builder()
                 .name("Nouveau Nom")
                 .description("Nouvelle desc")
-                .startDateTime(LocalDateTime.now().plusDays(3))
-                .endDateTime(LocalDateTime.now().plusDays(3).plusHours(2))
+                .startDateTime(java.time.Instant.now().plus(3, java.time.temporal.ChronoUnit.DAYS))
+                .endDateTime(java.time.Instant.now().plus(3, java.time.temporal.ChronoUnit.DAYS).plus(2, java.time.temporal.ChronoUnit.HOURS))
                 .location("Lyon")
                 .maxCapacity(20)
                 .ticketPrice(BigDecimal.ONE)

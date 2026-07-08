@@ -20,12 +20,16 @@ import com.yowpainter.shared.kernel.port.KernelFilePort;
 import com.yowpainter.modules.auth.infrastructure.adapter.in.web.dto.ProfileImageUploadResponse;
 import org.springframework.web.multipart.MultipartFile;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.yowpainter.shared.tenant.TenantMigrationService;
+import com.yowpainter.shared.kernel.KernelStatusResolver;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private static final String KERNEL_MANAGED_PASSWORD = "{KERNEL_MANAGED}";
@@ -41,6 +45,7 @@ public class AuthService {
     private final KernelAdminRegistrationService kernelAdminRegistrationService;
     private final KernelBootstrapAdminSession kernelBootstrapAdminSession;
     private final KernelFilePort kernelFilePort;
+    private final TenantMigrationService tenantMigrationService;
 
     public List<String> getAvailableRoles() {
         return List.of(UserRole.ROLE_ARTIST.name(), UserRole.ROLE_BUYER.name());
@@ -99,13 +104,11 @@ public class AuthService {
             Optional<Artist> artist = artistRepository.findByEmail(confirmed.email());
             if (artist.isPresent()) {
                 kernelArtistRegistrationService.applyEmailConfirmedArtist(artist.get(), confirmed);
-                AuthResponse response = KernelAuthMapper.toAuthResponse(confirmed, artist.get());
-                if (kernelArtistRegistrationService.isArtistActive(artist.get())) {
+                Artist updatedArtist = artistRepository.findByEmail(confirmed.email()).orElse(artist.get());
+                AuthResponse response = KernelAuthMapper.toAuthResponse(confirmed, updatedArtist);
+                if (kernelArtistRegistrationService.isArtistActive(updatedArtist)) {
                     response.setMessage("E-mail verifie. Votre espace artiste est actif, vous pouvez vous connecter.");
-                    response.setRegistrationStatus("ACTIVE");
                 } else {
-                    response.setEmailVerified(true);
-                    response.setRegistrationStatus("PENDING_APPROVAL");
                     response.setMessage(
                             "E-mail verifie. Votre demande est en attente de validation par notre equipe."
                     );
@@ -197,16 +200,38 @@ public class AuthService {
     }
 
     private Artist refreshArtistStatus(Artist artist, KernelAuthPort.KernelLoginResult loginResult) {
-        if (Boolean.TRUE.equals(loginResult.emailVerified())
-                && "PENDING_EMAIL".equalsIgnoreCase(artist.getStatus())) {
-            artist.setStatus("PENDING_APPROVAL");
-        }
+        String oldStatus = artist.getStatus();
+        String newStatus = KernelStatusResolver.determineStatusFromKernel(
+                loginResult.emailVerified(),
+                loginResult.registrationStatus(),
+                loginResult.accountStatus(),
+                loginResult.organizations(),
+                loginResult.actorId()
+        );
+        
+        artist.setStatus(newStatus);
+        
         if (loginResult.organizations() != null && !loginResult.organizations().isEmpty()) {
             artist.setOrganizationId(loginResult.organizations().get(0).organizationId());
         }
         if (loginResult.actorId() != null) {
             artist.setKernelActorId(loginResult.actorId());
         }
+        if (loginResult.tenantId() != null) {
+            artist.setTenantId(loginResult.tenantId());
+        }
+
+        if ("ACTIVE".equalsIgnoreCase(newStatus) && !"ACTIVE".equalsIgnoreCase(oldStatus)) {
+            UUID orgId = artist.getOrganizationId();
+            if (orgId != null) {
+                try {
+                    tenantMigrationService.migrateTenant(orgId);
+                } catch (Exception e) {
+                    log.error("Failed to run tenant migration for org {}", orgId, e);
+                }
+            }
+        }
+        
         kernelArtistRegistrationService.provisionArtistIfPending(artist, loginResult);
         return artistRepository.save(artist);
     }

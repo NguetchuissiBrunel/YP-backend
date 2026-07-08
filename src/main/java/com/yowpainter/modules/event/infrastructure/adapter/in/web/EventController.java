@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -34,6 +35,7 @@ import java.util.UUID;
 @RequestMapping("/api")
 @RequiredArgsConstructor
 @Tag(name = "Events", description = "Gestion complete des evenements et reservations")
+@Slf4j
 public class EventController {
 
     private final EventService eventService;
@@ -82,9 +84,58 @@ public class EventController {
     public ResponseEntity<EventResponse> createEvent(
             Authentication authentication,
             @Valid @RequestBody EventCreateRequest request) {
-        String email = authenticatedUserResolver.requireEmail(authentication);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(eventService.createEvent(email, request));
+        log.info("[EventController] createEvent - 1. Entrée dans EventController.createEvent()");
+        
+        if (request != null) {
+            log.info("[EventController] createEvent - 2. DTO reçu: name={}, type={}, startDateTime={}, endDateTime={}, posterUrl={}, location={}, maxCapacity={}, ticketPrice={}",
+                    request.getName(), request.getType(), request.getStartDateTime(), request.getEndDateTime(),
+                    request.getPosterUrl(), request.getLocation(), request.getMaxCapacity(), request.getTicketPrice());
+        } else {
+            log.info("[EventController] createEvent - 2. DTO reçu: null");
+        }
+
+        String authEmail = null;
+        String kernelUserIdStr = null;
+        String roleStr = null;
+        if (authentication != null) {
+            authEmail = authentication.getName();
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof com.yowpainter.modules.auth.domain.model.AppUser user) {
+                authEmail = user.getEmail();
+                if (user.getKernelUserId() != null) {
+                    kernelUserIdStr = user.getKernelUserId().toString();
+                }
+                if (user.getRole() != null) {
+                    roleStr = user.getRole().name();
+                }
+            }
+            if (roleStr == null) {
+                roleStr = authentication.getAuthorities().toString();
+            }
+            log.info("[EventController] createEvent - 3. Utilisateur authentifié: email={}, kernelUserId={}, rôle={}",
+                    authEmail, kernelUserIdStr, roleStr);
+        } else {
+            log.info("[EventController] createEvent - 3. Utilisateur authentifié: null");
+        }
+
+        try {
+            String email = authenticatedUserResolver.requireEmail(authentication);
+            
+            log.info("[EventController] createEvent - Tracing parameters:");
+            log.info("- startDateTime reçu: {}", request != null ? request.getStartDateTime() : null);
+            log.info("- endDateTime reçu: {}", request != null ? request.getEndDateTime() : null);
+            log.info("- Instant.now(): {}", java.time.Instant.now());
+            log.info("- LocalDateTime.now(): {}", java.time.LocalDateTime.now());
+            log.info("- ZoneId.systemDefault(): {}", java.time.ZoneId.systemDefault());
+            log.info("- Clock.systemUTC().instant(): {}", java.time.Clock.systemUTC().instant());
+
+            EventResponse response = eventService.createEvent(email, request);
+            log.info("[EventController] createEvent - 10. Succès de la création de l'événement.");
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (Exception ex) {
+            log.error("[EventController] createEvent - 11. Exception interceptée avec stacktrace complète", ex);
+            throw ex;
+        }
     }
 
     @GetMapping("/events/me")

@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Data
@@ -17,8 +17,8 @@ public class EventResponse {
     private String name;
     private String description;
     private String posterUrl;
-    private LocalDateTime startDateTime;
-    private LocalDateTime endDateTime;
+    private Instant startDateTime;
+    private Instant endDateTime;
     private String location;
     private EventType type;
     private int maxCapacity;

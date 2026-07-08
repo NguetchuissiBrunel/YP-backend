@@ -21,4 +21,9 @@ public class TicketRepositoryAdapter implements TicketRepositoryPort {
     public java.util.Optional<Ticket> findByQrCodeData(String qrCodeData) {
         return jpaRepository.findByQrCodeData(qrCodeData);
     }
+
+    @Override
+    public java.util.Optional<Ticket> findByReservationId(java.util.UUID reservationId) {
+        return jpaRepository.findByReservationId(reservationId);
+    }
 }

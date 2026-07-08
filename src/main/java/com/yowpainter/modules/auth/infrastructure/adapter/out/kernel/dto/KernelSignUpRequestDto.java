@@ -1,11 +1,11 @@
 package com.yowpainter.modules.auth.infrastructure.adapter.out.kernel.dto;
 
-import java.util.Map;
-
 public record KernelSignUpRequestDto(
         String firstName,
         String lastName,
         String email,
+        String username,
+        String tenantId,
         String password,
         String accountType
 ) {

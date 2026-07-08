@@ -40,14 +40,33 @@ public class EventService {
 
     @Transactional
     public EventResponse createEvent(String artistEmail, EventCreateRequest request) {
-        Artist artist = artistRepository.findByEmail(artistEmail).orElseThrow();
+        log.info("[EventService] createEvent - 1. Entrée dans EventService.createEvent()");
+        if (request != null) {
+            log.info("[EventService] createEvent - 2. DTO reçu: name={}, type={}, startDateTime={}, endDateTime={}, posterUrl={}, location={}, maxCapacity={}, ticketPrice={}",
+                    request.getName(), request.getType(), request.getStartDateTime(), request.getEndDateTime(),
+                    request.getPosterUrl(), request.getLocation(), request.getMaxCapacity(), request.getTicketPrice());
+        }
+
+        log.info("[EventService] createEvent - 5. OrganizationContext avant initialisation: {}", OrganizationContext.getOrganizationId());
+
+        Artist artist = artistRepository.findByEmail(artistEmail).orElseThrow(() -> {
+            log.error("[EventService] createEvent - Artiste non trouvé pour l'email: {}", artistEmail);
+            return new IllegalArgumentException("Artiste introuvable");
+        });
+
+        log.info("[EventService] createEvent - 4. Artiste trouvé: id={}, organizationId={}, slug={}", 
+                artist.getId(), artist.getOrganizationId(), artist.getSlug());
+
+        log.info("[EventService] createEvent - 6. OrganizationContext après initialisation (ou lookup): {}", OrganizationContext.getOrganizationId());
+
+        log.info("[EventService] createEvent - 7. Création de l'entité Event");
         Event event = Event.builder()
                 .artistId(artist.getId())
                 .name(request.getName())
                 .description(request.getDescription())
                 .posterUrl(request.getPosterUrl())
-                .startDateTime(request.getStartDateTime())
-                .endDateTime(request.getEndDateTime())
+                .startDateTime(request.getStartDateTime() != null ? request.getStartDateTime().atZone(java.time.ZoneOffset.UTC).toLocalDateTime() : null)
+                .endDateTime(request.getEndDateTime() != null ? request.getEndDateTime().atZone(java.time.ZoneOffset.UTC).toLocalDateTime() : null)
                 .location(request.getLocation())
                 .type(request.getType())
                 .maxCapacity(request.getMaxCapacity())
@@ -55,12 +74,22 @@ public class EventService {
                 .status(EventStatus.PUBLISHED)
                 .build();
 
-        return mapToResponse(eventRepository.save(event));
+        log.info("[EventService] createEvent - 8. Toutes les validations métier exécutées dans createEvent() (Aucune validation métier personnalisée supplémentaire)");
+
+        log.info("[EventService] createEvent - 9. Juste avant eventRepository.save()");
+        try {
+            Event savedEvent = eventRepository.save(event);
+            log.info("[EventService] createEvent - 10. Juste après eventRepository.save(). Entité sauvegardée: id={}", savedEvent.getId());
+            return mapToResponse(savedEvent);
+        } catch (Exception ex) {
+            log.error("[EventService] createEvent - 11. Exception interceptée avec stacktrace complète", ex);
+            throw ex;
+        }
     }
 
     @Transactional(readOnly = true)
     public List<EventResponse> getUpcomingEvents() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
         List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
         List<EventResponse> allEvents = new ArrayList<>();
         for (Artist artist : activeArtists) {
@@ -87,10 +116,26 @@ public class EventService {
 
     @Transactional(readOnly = true)
     public List<EventResponse> getEventsByArtistId(UUID artistId) {
-        return eventRepository.findByArtistId(artistId).stream()
-                .filter(e -> e.getStatus() != EventStatus.CANCELLED)
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        Artist artist = artistRepository.findById(artistId).orElse(null);
+        if (artist == null || artist.getOrganizationId() == null) {
+            return List.of();
+        }
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
+        try {
+            OrganizationContext.setOrganizationId(artist.getOrganizationId());
+            return tenantTransactionExecutor.execute(() ->
+                eventRepository.findByArtistId(artistId).stream()
+                        .filter(e -> e.getStatus() == EventStatus.PUBLISHED || e.getStatus() == EventStatus.FULL || e.getStatus() == EventStatus.ONGOING)
+                        .filter(e -> {
+                            LocalDateTime end = e.getEndDateTime() != null ? e.getEndDateTime() : e.getStartDateTime();
+                            return end != null && end.isAfter(now);
+                        })
+                        .map(this::mapToResponse)
+                        .collect(Collectors.toList())
+            );
+        } finally {
+            OrganizationContext.clear();
+        }
     }
 
     @Transactional(readOnly = true)
@@ -99,12 +144,12 @@ public class EventService {
         if (artist.getOrganizationId() == null) {
             return List.of();
         }
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
         try {
             OrganizationContext.setOrganizationId(artist.getOrganizationId());
             return tenantTransactionExecutor.execute(() ->
                 eventRepository.findByArtistId(artist.getId()).stream()
-                        .filter(e -> e.getStatus() == EventStatus.PUBLISHED)
+                        .filter(e -> e.getStatus() == EventStatus.PUBLISHED || e.getStatus() == EventStatus.FULL || e.getStatus() == EventStatus.ONGOING)
                         .filter(e -> {
                             LocalDateTime end = e.getEndDateTime() != null ? e.getEndDateTime() : e.getStartDateTime();
                             return end != null && end.isAfter(now);
@@ -160,7 +205,7 @@ public class EventService {
     public List<EventResponse> searchEvents(String query) {
         List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
         List<EventResponse> allEvents = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
         for (Artist artist : activeArtists) {
             if (artist.getOrganizationId() == null) continue;
             try {
@@ -241,7 +286,7 @@ public class EventService {
                 if (isFree) {
                     Ticket ticket = Ticket.builder()
                             .reservation(reservation)
-                            .qrCodeData(UUID.randomUUID().toString())
+                            .qrCodeData(reservation.getId().toString())
                             .isScanned(false)
                             .build();
                     ticketRepository.save(ticket);
@@ -298,12 +343,15 @@ public class EventService {
                 reservation.setStatus(ReservationStatus.CONFIRMED);
                 reservationRepository.save(reservation);
 
-                Ticket ticket = Ticket.builder()
-                        .reservation(reservation)
-                        .qrCodeData(UUID.randomUUID().toString())
-                        .isScanned(false)
-                        .build();
-                ticketRepository.save(ticket);
+                java.util.Optional<Ticket> existingTicket = ticketRepository.findByReservationId(reservation.getId());
+                if (existingTicket.isEmpty()) {
+                    Ticket ticket = Ticket.builder()
+                            .reservation(reservation)
+                            .qrCodeData(reservation.getId().toString())
+                            .isScanned(false)
+                            .build();
+                    ticketRepository.save(ticket);
+                }
             });
         } finally {
             OrganizationContext.clear();
@@ -361,8 +409,8 @@ public class EventService {
         event.setName(request.getName());
         event.setDescription(request.getDescription());
         event.setPosterUrl(request.getPosterUrl());
-        event.setStartDateTime(request.getStartDateTime());
-        event.setEndDateTime(request.getEndDateTime());
+        event.setStartDateTime(request.getStartDateTime() != null ? request.getStartDateTime().atZone(java.time.ZoneOffset.UTC).toLocalDateTime() : null);
+        event.setEndDateTime(request.getEndDateTime() != null ? request.getEndDateTime().atZone(java.time.ZoneOffset.UTC).toLocalDateTime() : null);
         event.setLocation(request.getLocation());
         event.setMaxCapacity(request.getMaxCapacity());
         event.setTicketPrice(request.getTicketPrice());
@@ -383,7 +431,15 @@ public class EventService {
     @Transactional
     public TicketResponse validateTicket(String qrCodeData) {
         Ticket ticket = ticketRepository.findByQrCodeData(qrCodeData)
-                .orElseThrow(() -> new IllegalArgumentException("Billet invalide"));
+                .orElseGet(() -> {
+                    try {
+                        UUID reservationId = UUID.fromString(qrCodeData);
+                        return ticketRepository.findByReservationId(reservationId)
+                                .orElseThrow(() -> new IllegalArgumentException("Billet invalide"));
+                    } catch (Exception e) {
+                        throw new IllegalArgumentException("Billet invalide");
+                    }
+                });
         
         if (ticket.isScanned()) {
             throw new IllegalStateException("Ce billet a déjà été scanné le " + ticket.getScannedAt());
@@ -444,8 +500,8 @@ public class EventService {
                 .name(event.getName())
                 .description(event.getDescription())
                 .posterUrl(com.yowpainter.shared.utils.UrlSanitizer.sanitizeFileUrl(event.getPosterUrl()))
-                .startDateTime(event.getStartDateTime())
-                .endDateTime(event.getEndDateTime())
+                .startDateTime(event.getStartDateTime() != null ? event.getStartDateTime().toInstant(java.time.ZoneOffset.UTC) : null)
+                .endDateTime(event.getEndDateTime() != null ? event.getEndDateTime().toInstant(java.time.ZoneOffset.UTC) : null)
                 .location(event.getLocation())
                 .type(event.getType())
                 .maxCapacity(event.getMaxCapacity())
@@ -456,13 +512,40 @@ public class EventService {
     }
 
     private ReservationResponse mapToReservationResponse(Reservation res) {
+        String qrCode = null;
+        try {
+            java.util.Optional<Ticket> ticketOpt = ticketRepository.findByReservationId(res.getId());
+            if (ticketOpt.isPresent()) {
+                qrCode = ticketOpt.get().getQrCodeData();
+            }
+        } catch (Exception e) {
+            log.warn("Failed to retrieve ticket for reservation {}", res.getId(), e);
+        }
+
+        String userName = null;
+        String userEmail = null;
+        try {
+            AppUser user = userRepository.findById(res.getUserId()).orElse(null);
+            if (user != null) {
+                userEmail = user.getEmail();
+                userName = (user.getFirstName() != null && user.getLastName() != null)
+                        ? user.getFirstName() + " " + user.getLastName()
+                        : user.getFirstName();
+            }
+        } catch (Exception e) {
+            log.warn("Failed to retrieve user for reservation {}", res.getId(), e);
+        }
+
         return ReservationResponse.builder()
                 .id(res.getId())
                 .eventId(res.getEvent().getId())
                 .eventName(res.getEvent().getName())
                 .userId(res.getUserId())
+                .userName(userName)
+                .userEmail(userEmail)
                 .status(res.getStatus())
-                .createdAt(res.getReservedAt())
+                .createdAt(res.getReservedAt() != null ? res.getReservedAt().atZone(java.time.ZoneId.systemDefault()).toInstant() : null)
+                .qrCodeData(qrCode != null ? qrCode : res.getId().toString())
                 .build();
     }
 
@@ -471,7 +554,7 @@ public class EventService {
                 .id(ticket.getId())
                 .reservationId(ticket.getReservation().getId())
                 .isScanned(ticket.isScanned())
-                .scannedAt(ticket.getScannedAt())
+                .scannedAt(ticket.getScannedAt() != null ? ticket.getScannedAt().atZone(java.time.ZoneId.systemDefault()).toInstant() : null)
                 .build();
     }
 }

@@ -91,8 +91,8 @@ public class GlobalAggregationTest {
         // A creates event
         EventCreateRequest evA = EventCreateRequest.builder()
                 .name("Event A")
-                .startDateTime(LocalDateTime.now().plusDays(1))
-                .endDateTime(LocalDateTime.now().plusDays(2))
+                .startDateTime(java.time.Instant.now().plus(1, java.time.temporal.ChronoUnit.DAYS))
+                .endDateTime(java.time.Instant.now().plus(2, java.time.temporal.ChronoUnit.DAYS))
                 .location("Loc A")
                 .type(com.yowpainter.modules.event.domain.model.EventType.EXHIBITION)
                 .maxCapacity(10)
@@ -103,8 +103,8 @@ public class GlobalAggregationTest {
         // B creates event
         EventCreateRequest evB = EventCreateRequest.builder()
                 .name("Event B")
-                .startDateTime(LocalDateTime.now().plusDays(3))
-                .endDateTime(LocalDateTime.now().plusDays(4))
+                .startDateTime(java.time.Instant.now().plus(3, java.time.temporal.ChronoUnit.DAYS))
+                .endDateTime(java.time.Instant.now().plus(4, java.time.temporal.ChronoUnit.DAYS))
                 .location("Loc B")
                 .type(com.yowpainter.modules.event.domain.model.EventType.WORKSHOP)
                 .maxCapacity(10)

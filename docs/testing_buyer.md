@@ -35,13 +35,17 @@ Comme pour les artistes, les tests de l'acheteur impliquent :
 
 ---
 
-### Étape 2 : Confirmation de l'e-mail
-*   **Interface de test :** **Swagger YowPainter Backend** ou lien de redirection
-*   **Endpoint à appeler :** `POST /api/auth/confirm-email` ou lien `GET /api/auth/confirm-email?token={token}`
+### Étape 2 : Confirmation de l'e-mail et redirection
+*   **Interface de test :** **Swagger YowPainter Backend** ou lien reçu dans l'e-mail de confirmation
+*   **Endpoint / Lien :** `POST /api/auth/confirm-email` ou lien `GET /api/auth/confirm-email?token={token}`
 *   **Vérification sous-jacente :**
     1.  Le jeton de vérification reçu par l'acheteur est transmis au Kernel pour confirmation.
     2.  À la confirmation, le statut local de l'utilisateur passe automatiquement à `ACTIVE` (les acheteurs n'ont pas besoin d'approbation manuelle administrative contrairement aux artistes).
-    3.  L'acheteur est désormais autorisé à s'authentifier.
+    3.  L'appel de type `GET /api/auth/confirm-email?token={token}` redirige l'utilisateur sur la page frontend `/register/verify` avec les paramètres appropriés :
+        - En cas de succès : `/register/verify?success=true&message=...`
+        - En cas de lien expiré : `/register/verify?success=false&errorType=expired&message=...`
+        - En cas de lien invalide : `/register/verify?success=false&errorType=invalid&message=...`
+    4.  L'acheteur est désormais autorisé à s'authentifier et est redirigé vers la page de connexion.
 
 ---
 

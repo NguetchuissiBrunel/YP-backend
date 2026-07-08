@@ -30,6 +30,12 @@ public class AuthResponse {
     private List<OrganizationAccessResponse> organizations;
     private Boolean emailVerified;
     private String registrationStatus;
+    
+    private Boolean canAccessDashboard;
+    private String pendingReason;
+    private String nextAction;
+    private Boolean refreshAllowed;
+    private String kernelVerificationUrl;
 
     @Data
     @Builder

@@ -164,18 +164,28 @@ public class AuthController {
         try {
             AuthResponse response = authService.confirmEmail(resolvedToken);
             URI redirect = UriComponentsBuilder.fromUriString(frontendUrl)
-                    .path("/login")
-                    .queryParam("emailVerified", true)
+                    .path("/register/verify")
+                    .queryParam("success", true)
                     .queryParam("message", response.getMessage())
                     .encode(StandardCharsets.UTF_8)
                     .build()
                     .toUri();
             return ResponseEntity.status(HttpStatus.FOUND).location(redirect).build();
         } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            String errorType = "invalid";
+            if (msg != null) {
+                if (msg.contains("expire") || msg.contains("expired")) {
+                    errorType = "expired";
+                } else if (msg.contains("deja verifie") || msg.contains("déjà vérifié") || msg.contains("already verified")) {
+                    errorType = "already_verified";
+                }
+            }
             URI redirect = UriComponentsBuilder.fromUriString(frontendUrl)
-                    .path("/login")
-                    .queryParam("emailVerified", false)
-                    .queryParam("message", e.getMessage())
+                    .path("/register/verify")
+                    .queryParam("success", false)
+                    .queryParam("errorType", errorType)
+                    .queryParam("message", msg)
                     .encode(StandardCharsets.UTF_8)
                     .build()
                     .toUri();

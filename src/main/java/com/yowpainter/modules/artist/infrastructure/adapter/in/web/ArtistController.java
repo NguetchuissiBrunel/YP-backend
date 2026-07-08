@@ -5,6 +5,8 @@ import com.yowpainter.modules.artist.infrastructure.adapter.in.web.dto.ArtistRes
 import com.yowpainter.modules.artist.infrastructure.adapter.in.web.dto.ArtistUpdateRequest;
 import com.yowpainter.modules.artist.application.service.ArtistService;
 import com.yowpainter.shared.security.AuthenticatedUserResolver;
+import com.yowpainter.shared.security.KernelAccessTokenResolver;
+import com.yowpainter.modules.artist.domain.model.Artist;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -42,7 +44,9 @@ public class ArtistController {
     @PreAuthorize("hasRole('ARTIST')")
     @Operation(summary = "Recuperer mon propre profil (Artiste connecte)")
     public ResponseEntity<ArtistResponse> getMyProfile(Authentication authentication) {
-        return ResponseEntity.ok(artistService.toResponse(authenticatedUserResolver.requireArtist(authentication)));
+        Artist artist = authenticatedUserResolver.requireArtist(authentication);
+        String accessToken = KernelAccessTokenResolver.requireAccessToken(authentication);
+        return ResponseEntity.ok(artistService.getMyProfileWithSync(artist, accessToken));
     }
 
     @PutMapping("/artist/me")

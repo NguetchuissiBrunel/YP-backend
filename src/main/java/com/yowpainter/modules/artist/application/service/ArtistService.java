@@ -6,8 +6,12 @@ import com.yowpainter.modules.artist.infrastructure.adapter.in.web.dto.ArtistUpd
 import com.yowpainter.modules.artist.domain.model.Artist;
 import com.yowpainter.modules.artist.domain.port.out.ArtistRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.yowpainter.modules.auth.application.port.out.KernelAuthPort;
+import com.yowpainter.shared.tenant.TenantMigrationService;
+import com.yowpainter.shared.kernel.KernelStatusResolver;
 
 import java.util.List;
 import java.util.UUID;
@@ -15,6 +19,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ArtistService {
 
     private final ArtistRepositoryPort artistRepository;
@@ -22,6 +27,8 @@ public class ArtistService {
     private final com.yowpainter.modules.artwork.domain.port.out.ArtworkLikeRepositoryPort artworkLikeRepository;
     private final com.yowpainter.modules.shop.domain.port.out.OrderRepositoryPort orderRepository;
     private final com.yowpainter.modules.event.domain.port.out.EventRepositoryPort eventRepository;
+    private final KernelAuthPort kernelAuthPort;
+    private final TenantMigrationService tenantMigrationService;
 
     public ArtistResponse getArtistBySlug(String slug) {
         Artist artist = artistRepository.findBySlug(slug)
@@ -51,6 +58,48 @@ public class ArtistService {
     }
 
     public ArtistResponse toResponse(Artist artist) {
+        return mapToResponse(artist);
+    }
+
+    @Transactional
+    public ArtistResponse getMyProfileWithSync(Artist artist, String accessToken) {
+        if (!"ACTIVE".equalsIgnoreCase(artist.getStatus())) {
+            try {
+                KernelAuthPort.KernelUserProfile profile = kernelAuthPort.me(accessToken);
+                
+                String oldStatus = artist.getStatus();
+                String newStatus = KernelStatusResolver.determineStatusFromKernel(
+                        profile.emailVerified(),
+                        profile.registrationStatus(),
+                        profile.accountStatus(),
+                        profile.organizations(),
+                        profile.actorId()
+                );
+                
+                artist.setStatus(newStatus);
+                
+                if (profile.organizations() != null && !profile.organizations().isEmpty()) {
+                    artist.setOrganizationId(profile.organizations().get(0).organizationId());
+                }
+                if (profile.actorId() != null) {
+                    artist.setKernelActorId(profile.actorId());
+                }
+                if (profile.tenantId() != null) {
+                    artist.setTenantId(profile.tenantId());
+                }
+                
+                if ("ACTIVE".equalsIgnoreCase(newStatus) && !"ACTIVE".equalsIgnoreCase(oldStatus)) {
+                    UUID orgId = artist.getOrganizationId();
+                    if (orgId != null) {
+                        tenantMigrationService.migrateTenant(orgId);
+                    }
+                }
+                
+                artist = artistRepository.save(artist);
+            } catch (Exception ex) {
+                log.warn("Failed to dynamically sync artist profile from Kernel: {}", ex.getMessage());
+            }
+        }
         return mapToResponse(artist);
     }
 

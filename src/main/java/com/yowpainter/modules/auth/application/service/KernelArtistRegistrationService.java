@@ -25,7 +25,7 @@ public class KernelArtistRegistrationService {
 
     private static final String KERNEL_MANAGED_PASSWORD = "{KERNEL_MANAGED}";
     private static final String STATUS_PENDING_EMAIL = "PENDING_EMAIL";
-    private static final String STATUS_PENDING_APPROVAL = "PENDING_APPROVAL";
+    private static final String STATUS_PENDING_APPROVAL = "ORGANIZATION_VALIDATION_REQUIRED";
     private static final String STATUS_ACTIVE = "ACTIVE";
 
     private final KernelAuthPort kernelAuthPort;

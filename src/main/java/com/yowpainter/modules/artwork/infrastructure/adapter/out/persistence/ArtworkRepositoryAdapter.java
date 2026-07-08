@@ -24,7 +24,7 @@ public class ArtworkRepositoryAdapter implements ArtworkRepositoryPort {
     }
 
     @Override
-    public List<Artwork> saveAll(Iterable<Artwork> artworks) {
+    public <S extends Artwork> List<S> saveAll(Iterable<S> artworks) {
         return jpaRepository.saveAll(artworks);
     }
 
@@ -39,7 +39,7 @@ public class ArtworkRepositoryAdapter implements ArtworkRepositoryPort {
     }
 
     @Override
-    public void deleteAll(Iterable<Artwork> artworks) {
+    public void deleteAll(Iterable<? extends Artwork> artworks) {
         jpaRepository.deleteAll(artworks);
     }
 

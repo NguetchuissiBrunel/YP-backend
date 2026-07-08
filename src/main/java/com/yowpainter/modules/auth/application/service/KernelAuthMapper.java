@@ -16,6 +16,65 @@ final class KernelAuthMapper {
 
     static AuthResponse toAuthResponse(KernelAuthPort.KernelLoginResult loginResult, AppUser user) {
         UUID organizationId = resolveOrganizationId(loginResult, user instanceof Artist artist ? artist : null);
+        Boolean emailVerified = resolveEmailVerified(loginResult, user);
+        
+        String regStatus = null;
+        Boolean canAccessDashboard = true;
+        String pendingReason = null;
+        String nextAction = null;
+        Boolean refreshAllowed = true;
+        String kernelVerificationUrl = null;
+
+        if (user instanceof Artist artist) {
+            regStatus = artist.getStatus();
+            
+            if ("PENDING_EMAIL".equalsIgnoreCase(regStatus)) {
+                canAccessDashboard = false;
+                pendingReason = "EMAIL_NOT_VERIFIED";
+                nextAction = "VERIFY_EMAIL";
+                refreshAllowed = true;
+                kernelVerificationUrl = "https://kernel-core.yowyob.com";
+            } else if ("EMAIL_VERIFIED".equalsIgnoreCase(regStatus)) {
+                canAccessDashboard = false;
+                pendingReason = "ORGANIZATION_NOT_CREATED";
+                nextAction = "WAIT_ORGANIZATION_VALIDATION";
+                refreshAllowed = true;
+            } else if ("ORGANIZATION_VALIDATION_REQUIRED".equalsIgnoreCase(regStatus) 
+                    || "PENDING_APPROVAL".equalsIgnoreCase(regStatus)) {
+                regStatus = "ORGANIZATION_VALIDATION_REQUIRED";
+                canAccessDashboard = false;
+                pendingReason = "ORGANIZATION_PENDING_VALIDATION";
+                nextAction = "WAIT_ORGANIZATION_VALIDATION";
+                refreshAllowed = true;
+            } else if ("ORGANIZATION_REJECTED".equalsIgnoreCase(regStatus)
+                    || "REJECTED".equalsIgnoreCase(regStatus)) {
+                regStatus = "ORGANIZATION_REJECTED";
+                canAccessDashboard = false;
+                pendingReason = "ORGANIZATION_REJECTED";
+                nextAction = "CONTACT_SUPPORT";
+                refreshAllowed = false;
+            } else if ("ORGANIZATION_SUSPENDED".equalsIgnoreCase(regStatus)
+                    || "SUSPENDED".equalsIgnoreCase(regStatus)) {
+                regStatus = "ORGANIZATION_SUSPENDED";
+                canAccessDashboard = false;
+                pendingReason = "ORGANIZATION_SUSPENDED";
+                nextAction = "CONTACT_SUPPORT";
+                refreshAllowed = false;
+            } else {
+                regStatus = "ACTIVE";
+                canAccessDashboard = true;
+            }
+        } else if (user != null) {
+            regStatus = Boolean.TRUE.equals(emailVerified) ? "ACTIVE" : "PENDING_EMAIL";
+            if (!Boolean.TRUE.equals(emailVerified)) {
+                canAccessDashboard = false;
+                pendingReason = "EMAIL_NOT_VERIFIED";
+                nextAction = "VERIFY_EMAIL";
+                refreshAllowed = true;
+                kernelVerificationUrl = "https://kernel-core.yowyob.com";
+            }
+        }
+
         return AuthResponse.builder()
                 .accessToken(loginResult.accessToken())
                 .refreshToken(loginResult.refreshToken())
@@ -29,8 +88,13 @@ final class KernelAuthMapper {
                 .kernelUserId(loginResult.userId())
                 .organizationId(organizationId)
                 .organizations(mapOrganizations(loginResult.organizations()))
-                .emailVerified(resolveEmailVerified(loginResult, user))
-                .registrationStatus(user instanceof Artist artist ? artist.getStatus() : (user != null ? "ACTIVE" : null))
+                .emailVerified(emailVerified)
+                .registrationStatus(regStatus)
+                .canAccessDashboard(canAccessDashboard)
+                .pendingReason(pendingReason)
+                .nextAction(nextAction)
+                .refreshAllowed(refreshAllowed)
+                .kernelVerificationUrl(kernelVerificationUrl)
                 .build();
     }
 

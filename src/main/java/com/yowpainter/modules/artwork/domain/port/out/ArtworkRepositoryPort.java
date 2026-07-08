@@ -14,13 +14,13 @@ public interface ArtworkRepositoryPort {
 
     Artwork save(Artwork artwork);
 
-    List<Artwork> saveAll(Iterable<Artwork> artworks);
+    <S extends Artwork> List<S> saveAll(Iterable<S> artworks);
 
     Optional<Artwork> findById(UUID id);
 
     List<Artwork> findAllById(Iterable<UUID> ids);
 
-    void deleteAll(Iterable<Artwork> artworks);
+    void deleteAll(Iterable<? extends Artwork> artworks);
 
     List<Artwork> findByArtistId(UUID artistId);
 

@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Data
@@ -16,5 +16,5 @@ public class TicketResponse {
     private UUID id;
     private UUID reservationId;
     private boolean isScanned;
-    private LocalDateTime scannedAt;
+    private Instant scannedAt;
 }

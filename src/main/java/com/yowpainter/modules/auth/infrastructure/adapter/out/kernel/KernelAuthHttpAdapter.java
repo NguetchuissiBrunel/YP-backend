@@ -1,8 +1,10 @@
 package com.yowpainter.modules.auth.infrastructure.adapter.out.kernel;
 
+import com.yowpainter.config.KernelProperties;
 import com.yowpainter.modules.auth.application.port.out.KernelAuthPort;
 import com.yowpainter.modules.auth.infrastructure.adapter.out.kernel.dto.KernelAuthSessionResponseDto;
 import com.yowpainter.modules.auth.infrastructure.adapter.out.kernel.dto.KernelContextualSignUpRequestDto;
+import com.yowpainter.modules.auth.infrastructure.adapter.out.kernel.dto.KernelDiscoverSignUpContextsRequestDto;
 import com.yowpainter.modules.auth.infrastructure.adapter.out.kernel.dto.KernelDiscoverSignUpContextsResponseDto;
 import com.yowpainter.modules.auth.infrastructure.adapter.out.kernel.dto.KernelForgotPasswordResponseDto;
 import com.yowpainter.modules.auth.infrastructure.adapter.out.kernel.dto.KernelIssuePasswordResetRequestDto;
@@ -17,6 +19,8 @@ import com.yowpainter.modules.auth.infrastructure.adapter.out.kernel.dto.KernelS
 import com.yowpainter.modules.auth.infrastructure.adapter.out.kernel.dto.KernelSignUpRequestDto;
 import com.yowpainter.modules.auth.infrastructure.adapter.out.kernel.dto.KernelUserProfileResponseDto;
 import com.yowpainter.shared.kernel.KernelHttpClient;
+import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -25,12 +29,16 @@ import java.util.Map;
 import java.util.Set;
 
 @Component
+@Primary
+@Profile("!test")
 public class KernelAuthHttpAdapter implements KernelAuthPort {
 
     private final KernelHttpClient kernelHttpClient;
+    private final KernelProperties kernelProperties;
 
-    public KernelAuthHttpAdapter(KernelHttpClient kernelHttpClient) {
+    public KernelAuthHttpAdapter(KernelHttpClient kernelHttpClient, KernelProperties kernelProperties) {
         this.kernelHttpClient = kernelHttpClient;
+        this.kernelProperties = kernelProperties;
     }
 
     @Override
@@ -50,6 +58,8 @@ public class KernelAuthHttpAdapter implements KernelAuthPort {
                         command.firstName(),
                         command.lastName(),
                         command.email(),
+                        command.email(), // username
+                        kernelProperties.tenantId(), // tenantId
                         command.password(),
                         command.accountType()
                 ),
@@ -59,11 +69,10 @@ public class KernelAuthHttpAdapter implements KernelAuthPort {
 
     @Override
     public DiscoverSignUpContextsResult discoverSignUpContexts(String organizationCode) {
-        KernelDiscoverSignUpContextsResponseDto response = kernelHttpClient.getWithQuery(
-                "/api/auth/sign-up/contexts",
-                Map.of("organizationCode", organizationCode),
-                KernelDiscoverSignUpContextsResponseDto.class,
-                null
+        KernelDiscoverSignUpContextsResponseDto response = kernelHttpClient.post(
+                "/api/auth/discover-sign-up-contexts",
+                new KernelDiscoverSignUpContextsRequestDto(organizationCode),
+                KernelDiscoverSignUpContextsResponseDto.class
         );
         return mapDiscovery(response);
     }
@@ -71,13 +80,15 @@ public class KernelAuthHttpAdapter implements KernelAuthPort {
     @Override
     public KernelLoginResult signUpWithContext(ContextualSignUpCommand command) {
         return mapSession(kernelHttpClient.post(
-                "/api/auth/sign-up/context",
+                "/api/auth/sign-up",
                 new KernelContextualSignUpRequestDto(
                         command.selectionToken(),
                         command.contextId(),
                         command.firstName(),
                         command.lastName(),
                         command.email(),
+                        command.email(), // username
+                        kernelProperties.tenantId(), // tenantId
                         command.password(),
                         command.accountType(),
                         command.businessType(),
@@ -89,13 +100,13 @@ public class KernelAuthHttpAdapter implements KernelAuthPort {
 
     @Override
     public void requestEmailVerification(String accessToken) {
-        kernelHttpClient.postVoid("/api/auth/email/verification/request", null, null, accessToken);
+        kernelHttpClient.postVoid("/api/auth/email-verification/request", null, null, accessToken);
     }
 
     @Override
     public KernelLoginResult confirmEmailVerification(String verificationToken) {
         return mapSession(kernelHttpClient.post(
-                "/api/auth/email/verify",
+                "/api/auth/email-verification/confirm",
                 Map.of("verificationToken", verificationToken),
                 KernelAuthSessionResponseDto.class
         ));
@@ -122,7 +133,7 @@ public class KernelAuthHttpAdapter implements KernelAuthPort {
     @Override
     public KernelUserProfile me(String accessToken) {
         KernelUserProfileResponseDto profile = kernelHttpClient.get(
-                "/api/auth/me",
+                "/api/users/me",
                 KernelUserProfileResponseDto.class,
                 null,
                 accessToken

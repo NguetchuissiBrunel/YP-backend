@@ -10,7 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Builder
@@ -27,11 +27,11 @@ public class EventCreateRequest {
 
     @NotNull(message = "La date de debut est requise")
     @Future(message = "La date de debut doit etre dans le futur")
-    private LocalDateTime startDateTime;
+    private Instant startDateTime;
 
     @NotNull(message = "La date de fin est requise")
     @Future(message = "La date de fin doit etre dans le futur")
-    private LocalDateTime endDateTime;
+    private Instant endDateTime;
 
     private String location;
 
