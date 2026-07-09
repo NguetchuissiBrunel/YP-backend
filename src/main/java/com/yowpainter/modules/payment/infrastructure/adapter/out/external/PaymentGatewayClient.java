@@ -11,7 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 /**
  * Stub du gateway de paiement Mobile Money — intégration Kernel à venir.
  * <p>
- * CamPay a été retiré. Les endpoints de paiement seront fournis par le
+ * L'ancienne intégration a été retirée. Les endpoints de paiement seront fournis par le
  * <strong>Kernel Core (kernel-core.yowyob.com)</strong> et intégrés ici dès
  * qu'ils seront disponibles.
  * </p>

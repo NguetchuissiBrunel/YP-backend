@@ -14,7 +14,7 @@ import java.util.UUID;
 /**
  * Service de retrait (payout) vers les artistes.
  * <p>
- * L'intégration Mobile Money (ex-CamPay) a été retirée.
+ * L'intégration Mobile Money a été retirée.
  * Un nouveau fournisseur de paiement sera branché ici.
  * </p>
  */

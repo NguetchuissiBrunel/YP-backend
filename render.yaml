@@ -57,14 +57,6 @@ services:
       - key: FRONTEND_URL
         sync: false
 
-      # Paiements CamPay (prod)
-      - key: CAMPAY_USERNAME
-        sync: false
-      - key: CAMPAY_PASSWORD
-        sync: false
-      - key: CAMPAY_BASE_URL
-        value: https://www.campay.net/api
-
       # E-mail (optionnel)
       - key: MAIL_USERNAME
         sync: false

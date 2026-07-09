@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * Service de polling des paiements en attente.
  * <p>
- * L'intégration CamPay a été retirée. Ce scheduler sera réactivé
+ * L'intégration Mobile Money a été retirée. Ce scheduler sera réactivé
  * dès que les endpoints de paiement Kernel seront disponibles.
  * </p>
  */

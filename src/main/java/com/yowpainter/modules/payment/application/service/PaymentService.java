@@ -95,7 +95,7 @@ public class PaymentService {
             return;
         }
 
-        // VERIFICATION DE SECURITE : On interroge CamPay directement pour confirmer le statut et le montant
+        // VERIFICATION DE SECURITE : On interroge le fournisseur de paiement directement pour confirmer le statut et le montant
         if (!verifyPaymentWithProvider(payment, providerReference)) {
             log.error("Payment verification failed for reference: {}. Possible fraud attempt.", referenceId);
             processFailedPayment(providerReference, externalReference, "VERIFICATION_FAILED");
