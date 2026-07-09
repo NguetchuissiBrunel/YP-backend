@@ -2,6 +2,7 @@ package com.yowpainter.modules.artist.infrastructure.adapter.out.persistence;
 
 import com.yowpainter.modules.artist.domain.model.Artist;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 public interface ArtistJpaRepository extends JpaRepository<Artist, java.util.UUID> {
 
@@ -9,4 +10,8 @@ public interface ArtistJpaRepository extends JpaRepository<Artist, java.util.UUI
     java.util.Optional<Artist> findByEmail(String email);
     java.util.Optional<Artist> findByKernelUserId(java.util.UUID kernelUserId);
     java.util.List<Artist> findByStatus(String status);
+
+    @Query("SELECT a FROM Artist a WHERE a.organizationId IS NOT NULL AND a.kernelActorId IS NOT NULL")
+    java.util.List<Artist> findAllWithValidatedOrganization();
 }
+

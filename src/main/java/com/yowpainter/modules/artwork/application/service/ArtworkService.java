@@ -173,10 +173,9 @@ public class ArtworkService {
                     .collect(Collectors.toList());
         }
 
-        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        List<Artist> activeArtists = artistRepository.findAllWithValidatedOrganization();
         List<ArtworkResponse> allResponses = new ArrayList<>();
         for (Artist artist : activeArtists) {
-            if (artist.getOrganizationId() == null) continue;
             try {
                 OrganizationContext.setOrganizationId(artist.getOrganizationId());
                 List<ArtworkResponse> tenantResponses = tenantTransactionExecutor.execute(() -> 

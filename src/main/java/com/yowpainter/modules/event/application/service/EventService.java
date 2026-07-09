@@ -90,10 +90,9 @@ public class EventService {
     @Transactional(readOnly = true)
     public List<EventResponse> getUpcomingEvents() {
         LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
-        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        List<Artist> activeArtists = artistRepository.findAllWithValidatedOrganization();
         List<EventResponse> allEvents = new ArrayList<>();
         for (Artist artist : activeArtists) {
-            if (artist.getOrganizationId() == null) continue;
             try {
                 OrganizationContext.setOrganizationId(artist.getOrganizationId());
                 List<EventResponse> tenantEvents = tenantTransactionExecutor.execute(() -> 

@@ -24,14 +24,10 @@ public class TenantBootstrapper implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         log.info("Initializing multi-tenant schema migrations...");
         try {
-            List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+            List<Artist> activeArtists = artistRepository.findAllWithValidatedOrganization();
             log.info("Found {} active artists to migrate", activeArtists.size());
             for (Artist artist : activeArtists) {
-                if (artist.getOrganizationId() != null) {
-                    tenantMigrationService.migrateTenant(artist.getOrganizationId());
-                } else {
-                    log.warn("Artist {} is ACTIVE but has no organizationId", artist.getEmail());
-                }
+                tenantMigrationService.migrateTenant(artist.getOrganizationId());
             }
             log.info("Multi-tenant schema migrations initialization completed.");
         } catch (Exception e) {

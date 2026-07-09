@@ -39,6 +39,11 @@ public class ArtistRepositoryAdapter implements ArtistRepositoryPort {
     }
 
     @Override
+    public java.util.List<Artist> findAllWithValidatedOrganization() {
+        return jpaRepository.findAllWithValidatedOrganization();
+    }
+
+    @Override
     public java.util.List<Artist> findAll() {
         return jpaRepository.findAll();
     }

@@ -17,6 +17,15 @@ public final class KernelStatusResolver {
             List<KernelAuthPort.KernelOrganizationAccess> organizations,
             UUID actorId
     ) {
+        // Rule: organizationId != null AND kernelActorId != null => ACTIVE
+        boolean hasActiveOrg = organizations != null 
+                && !organizations.isEmpty() 
+                && actorId != null;
+
+        if (hasActiveOrg) {
+            return "ACTIVE";
+        }
+
         // 1. Email verification check
         if (!Boolean.TRUE.equals(emailVerified)) {
             return "PENDING_EMAIL";
@@ -55,15 +64,6 @@ public final class KernelStatusResolver {
             if (norm.contains("SUSPEND")) {
                 return "ORGANIZATION_SUSPENDED";
             }
-        }
-
-        // 3. Fallback based on organizations list & business actor presence
-        boolean hasActiveOrg = organizations != null 
-                && !organizations.isEmpty() 
-                && actorId != null;
-
-        if (hasActiveOrg) {
-            return "ACTIVE";
         }
 
         // Default fallback after email verified

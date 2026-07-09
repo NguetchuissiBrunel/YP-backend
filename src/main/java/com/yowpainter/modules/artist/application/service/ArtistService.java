@@ -63,20 +63,24 @@ public class ArtistService {
 
     @Transactional
     public ArtistResponse getMyProfileWithSync(Artist artist, String accessToken) {
+        if (artist.getOrganizationId() != null && artist.getKernelActorId() != null) {
+            if (!"ACTIVE".equalsIgnoreCase(artist.getStatus())) {
+                artist.setStatus("ACTIVE");
+                try {
+                    tenantMigrationService.migrateTenant(artist.getOrganizationId());
+                } catch (Exception e) {
+                    log.error("Failed to run tenant migration for org {}", artist.getOrganizationId(), e);
+                }
+                artist = artistRepository.save(artist);
+            }
+            return mapToResponse(artist);
+        }
+
         if (!"ACTIVE".equalsIgnoreCase(artist.getStatus())) {
             try {
                 KernelAuthPort.KernelUserProfile profile = kernelAuthPort.me(accessToken);
                 
                 String oldStatus = artist.getStatus();
-                String newStatus = KernelStatusResolver.determineStatusFromKernel(
-                        profile.emailVerified(),
-                        profile.registrationStatus(),
-                        profile.accountStatus(),
-                        profile.organizations(),
-                        profile.actorId()
-                );
-                
-                artist.setStatus(newStatus);
                 
                 if (profile.organizations() != null && !profile.organizations().isEmpty()) {
                     artist.setOrganizationId(profile.organizations().get(0).organizationId());
@@ -87,6 +91,21 @@ public class ArtistService {
                 if (profile.tenantId() != null) {
                     artist.setTenantId(profile.tenantId());
                 }
+
+                String newStatus;
+                if (artist.getOrganizationId() != null && artist.getKernelActorId() != null) {
+                    newStatus = "ACTIVE";
+                } else {
+                    newStatus = KernelStatusResolver.determineStatusFromKernel(
+                            profile.emailVerified(),
+                            profile.registrationStatus(),
+                            profile.accountStatus(),
+                            profile.organizations(),
+                            profile.actorId()
+                    );
+                }
+                
+                artist.setStatus(newStatus);
                 
                 if ("ACTIVE".equalsIgnoreCase(newStatus) && !"ACTIVE".equalsIgnoreCase(oldStatus)) {
                     UUID orgId = artist.getOrganizationId();

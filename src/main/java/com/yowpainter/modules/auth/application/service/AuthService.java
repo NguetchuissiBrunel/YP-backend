@@ -201,15 +201,6 @@ public class AuthService {
 
     private Artist refreshArtistStatus(Artist artist, KernelAuthPort.KernelLoginResult loginResult) {
         String oldStatus = artist.getStatus();
-        String newStatus = KernelStatusResolver.determineStatusFromKernel(
-                loginResult.emailVerified(),
-                loginResult.registrationStatus(),
-                loginResult.accountStatus(),
-                loginResult.organizations(),
-                loginResult.actorId()
-        );
-        
-        artist.setStatus(newStatus);
         
         if (loginResult.organizations() != null && !loginResult.organizations().isEmpty()) {
             artist.setOrganizationId(loginResult.organizations().get(0).organizationId());
@@ -220,6 +211,21 @@ public class AuthService {
         if (loginResult.tenantId() != null) {
             artist.setTenantId(loginResult.tenantId());
         }
+
+        String newStatus;
+        if (artist.getOrganizationId() != null && artist.getKernelActorId() != null) {
+            newStatus = "ACTIVE";
+        } else {
+            newStatus = KernelStatusResolver.determineStatusFromKernel(
+                    loginResult.emailVerified(),
+                    loginResult.registrationStatus(),
+                    loginResult.accountStatus(),
+                    loginResult.organizations(),
+                    loginResult.actorId()
+            );
+        }
+        
+        artist.setStatus(newStatus);
 
         if ("ACTIVE".equalsIgnoreCase(newStatus) && !"ACTIVE".equalsIgnoreCase(oldStatus)) {
             UUID orgId = artist.getOrganizationId();
