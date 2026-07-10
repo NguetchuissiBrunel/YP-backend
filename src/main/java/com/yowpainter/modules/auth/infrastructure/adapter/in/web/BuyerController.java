@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.yowpainter.modules.auth.infrastructure.adapter.in.web.dto.UpdateProfilePictureRequest;
+
 @RestController
 @RequestMapping("/api/buyer")
 @RequiredArgsConstructor
@@ -43,6 +45,18 @@ public class BuyerController {
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
         user.setBio(request.getBio());
+
+        return ResponseEntity.ok(mapToResponse(userRepository.save(user)));
+    }
+
+    @PutMapping("/me/profile-picture")
+    @Operation(summary = "Mettre à jour la photo de profil de l'acheteur")
+    public ResponseEntity<BuyerProfileResponse> updateProfilePicture(
+            Authentication authentication,
+            @Valid @RequestBody UpdateProfilePictureRequest request) {
+        AppUser user = authenticatedUserResolver.requireBuyer(authentication);
+
+        user.setProfilePictureUrl(com.yowpainter.shared.utils.UrlSanitizer.sanitizeFileUrl(request.getProfilePictureUrl()));
 
         return ResponseEntity.ok(mapToResponse(userRepository.save(user)));
     }
