@@ -1,18 +1,21 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
     container_name: yowpainter_postgres
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: landry
-      POSTGRES_DB: EventSaas
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-landry}
+      POSTGRES_DB: ${POSTGRES_DB:-yowpainter_bd}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-yowpainter_bd}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - yowpainter_network
 
@@ -21,16 +24,55 @@ services:
     container_name: yowpainter_redis
     restart: always
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - yowpainter_network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yowpainter_api
+    restart: always
+    ports:
+      - "${PORT:-8090}:${PORT:-8090}"
+    environment:
+      - PORT=${PORT:-8090}
+      - PGHOST=db
+      - PGPORT=5432
+      - PGDATABASE=${POSTGRES_DB:-yowpainter_bd}
+      - PGUSER=${POSTGRES_USER:-postgres}
+      - PGPASSWORD=${POSTGRES_PASSWORD:-landry}
+      - KSM_KERNEL_BASE_URL=${KSM_KERNEL_BASE_URL}
+      - KSM_KERNEL_CLIENT_ID=${KSM_KERNEL_CLIENT_ID}
+      - KSM_KERNEL_API_KEY=${KSM_KERNEL_API_KEY}
+      - KSM_KERNEL_TENANT_ID=${KSM_KERNEL_TENANT_ID}
+      - KSM_KERNEL_JWK_SET_URI=${KSM_KERNEL_JWK_SET_URI}
+      - KSM_KERNEL_DEFAULT_PLAN_CODE=${KSM_KERNEL_DEFAULT_PLAN_CODE:-COMMERCE}
+      - KSM_KERNEL_DEFAULT_CURRENCY=${KSM_KERNEL_DEFAULT_CURRENCY:-XAF}
+      - KSM_KERNEL_SIGNUP_PLATFORM_ORG_CODE=${KSM_KERNEL_SIGNUP_PLATFORM_ORG_CODE:-yow-painter}
+      - KSM_KERNEL_AUTO_PROVISION_ARTISTS=${KSM_KERNEL_AUTO_PROVISION_ARTISTS:-false}
+      - KSM_KERNEL_BOOTSTRAP_ADMIN_USERNAME=${KSM_KERNEL_BOOTSTRAP_ADMIN_USERNAME}
+      - KSM_KERNEL_BOOTSTRAP_ADMIN_PASSWORD=${KSM_KERNEL_BOOTSTRAP_ADMIN_PASSWORD}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - MAIL_HOST=${MAIL_HOST:-smtp.gmail.com}
+      - MAIL_PORT=${MAIL_PORT:-587}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - yowpainter_network
 
 volumes:
   postgres_data:
   redis_data:
-
 
 networks:
   yowpainter_network:
