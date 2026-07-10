@@ -166,13 +166,13 @@ Le backend gère et traduit précisément les codes d'erreur du Kernel dans le c
 
 ---
 
-### Étape 5 : Flux de Commande et Paiement Campay
+### Étape 5 : Flux de Commande et Paiement PaymentProvider
 *   **Interface de test :** **Swagger YowPainter Backend** (authentifié avec un compte Acheteur)
 *   **Endpoint à appeler :** `POST /api/orders`
 *   **Vérification sous-jacente :**
     1.  La commande est créée dans le schéma tenant de l'artiste vendeur.
     2.  Initiez le paiement via `POST /api/payments/initiate`.
-    3.  Campay Sandbox simule le prélèvement et notifie le backend sur le webhook de notification (`POST /api/payments/callback`).
+    3.  PaymentProvider Sandbox simule le prélèvement et notifie le backend sur le webhook de notification (`POST /api/payments/callback`).
     4.  Le callback met à jour le statut du paiement en `SUCCESSFUL` directement dans la table `payment` du schéma du tenant concerné, puis ajuste le solde du portefeuille dans `public.wallet`.
 
 ---

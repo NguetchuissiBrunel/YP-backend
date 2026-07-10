@@ -100,7 +100,7 @@
   POST  & /products                              & ARTIST & Créer produit \\
   GET   & /v1/public/\{slug\}/products            & Public & Catalogue artiste \\
   POST  & /v1/public/\{slug\}/orders              & BUYER  & Créer commande \\
-  POST  & /orders/\{id\}/checkout                  & BUYER  & Payer (CamPay) \\
+  POST  & /orders/\{id\}/checkout                  & BUYER  & Payer (PaymentProvider) \\
   GET   & /orders/my-purchases                   & BUYER  & Mes achats \\
   GET   & /orders/my-sales                       & ARTIST & Mes ventes \\
   PATCH & /orders/\{id\}/status                    & ARTIST & Mettre à jour statut \\
@@ -136,7 +136,7 @@
     \toprule
     \textbf{Méthode} & \textbf{Path} & \textbf{Auth} & \textbf{Description} \\
     \midrule
-    POST & /api/payment/callback       & Public (webhook) & Callback CamPay \\
+    POST & /api/payment/callback       & Public (webhook) & Callback PaymentProvider \\
     GET  & /api/payment/history        & JWT              & Historique paiements \\
     GET  & /api/wallet/balance         & ARTIST           & Solde wallet \\
     GET  & /api/wallet/transactions    & ARTIST           & Transactions \\

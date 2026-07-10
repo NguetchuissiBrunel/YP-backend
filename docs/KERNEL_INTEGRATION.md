@@ -48,7 +48,7 @@ Le backend YowPainter est **toujours** un consommateur du kernel (auth, org, com
 
 ### Commerce
 - Produits/commandes délégués au kernel (`KernelCommerceService`)
-- Paiement CamPay local → à succès : `POST /api/sales/orders/{id}/confirm` sur le kernel
+- Paiement PaymentProvider local → à succès : `POST /api/sales/orders/{id}/confirm` sur le kernel
 - Événements Kafka `SALES_ORDER_CONFIRMED` / `SALES_ORDER_CANCELLED` → sync statut commande locale
 
 ### Fichiers

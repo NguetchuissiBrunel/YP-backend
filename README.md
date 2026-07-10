@@ -11,7 +11,7 @@ Le projet a été récemment modernisé vers les standards les plus récents :
 *   **Base de Données** : PostgreSQL 18.0
 *   **Multi-Tenancy** : Isolation par schéma (Schema-per-tenant) via Hibernate 6
 *   **Sécurité** : Spring Security 7.0 avec Authentification JWT (Stateless)
-*   **Paiements** : Intégration mobile money via **CamPay** (MTN, Orange, MoMo Pay)
+*   **Paiements** : Intégration mobile money via **PaymentProvider** (MTN, Orange, MoMo Pay)
 *   **Migrations** : Flyway (gestion automatique des schémas public et artistes)
 *   **Documentation** : OpenAPI 3 / Swagger UI (SpringDoc v3)
 *   **E-mails** : Spring Boot Mail (pour la récupération de mot de passe)
@@ -24,7 +24,7 @@ Le backend de YowPainter suit une **Architecture Hexagonale (Ports & Adapters)**
 ### 🌌 Avantages de cette architecture
 1. **Indépendance des Frameworks** : Le cœur de l'application (le Domaine) ne dépend d'aucune bibliothèque externe ni du framework Spring Boot.
 2. **Facilité de Test** : La logique métier peut être testée unitairement de manière extrêmement simple et rapide en simulant (mockant) ou en implémentant de simples doublons (stubs) pour les ports de sortie.
-3. **Flexibilité et Évolutivité** : Remplacer un composant technique (ex: changer de base de données ou de fournisseur de paiement comme CamPay) se fait simplement en implémentant un nouvel adaptateur sans altérer la logique métier centrale.
+3. **Flexibilité et Évolutivité** : Remplacer un composant technique (ex: changer de base de données ou de fournisseur de paiement comme PaymentProvider) se fait simplement en implémentant un nouvel adaptateur sans altérer la logique métier centrale.
 
 ---
 
@@ -37,7 +37,7 @@ flowchart TB
         in_rest[REST Controllers / DTOs]
         in_ws[WebSocket Endpoints]
         out_jpa[JPA Repositories]
-        out_client[CamPay Payment API Client]
+        out_client[PaymentProvider Payment API Client]
         out_mail[Email Sender API Implementation]
     end
 
@@ -92,7 +92,7 @@ com.yowpainter.modules.<nom-du-module>/
 *   **Multi-Tenant Provisioning** : Chaque nouvel artiste reçoit automatiquement son propre schéma de base de données isolé.
 *   **Réinitialisation de mot de passe** : Système complet par jeton UUID envoyé par e-mail sécurisé.
 
-### 💰 Système de Paiement (CamPay)
+### 💰 Système de Paiement (PaymentProvider)
 *   **Flux Mobile Money** : Notification USSD Push directe sur le téléphone de l'acheteur.
 *   **Boutique (Shop)** : Paiement des commandes d'articles d'art.
 *   **Événements** : Réservation et paiement de billets pour des vernissages ou expositions.
@@ -141,9 +141,9 @@ jwt:
 
 app:
   payment:
-    campay:
-      app-username: votre_campay_user
-      app-password: votre_campay_password
+    payment:
+      app-username: votre_payment_user
+      app-password: votre_payment_password
   frontend-url: http://localhost:3000
 ```
 

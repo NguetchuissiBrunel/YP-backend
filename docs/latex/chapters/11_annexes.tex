@@ -19,7 +19,7 @@
   Kernel & Plateforme RT-Comops fournissant IAM, commerce, fichiers et notifications \\
   ClientApplication & Application enregistrée dans le Kernel avec client-id et api-key \\
   Provisioning & Création automatique de l'organisation Kernel et du schéma tenant \\
-  CamPay & Passerelle de paiement Mobile Money (MTN, Orange, MoMo Pay) au Cameroun \\
+  PaymentProvider & Passerelle de paiement Mobile Money (MTN, Orange, MoMo Pay) au Cameroun \\
   USSD Push & Notification de paiement envoyée sur le téléphone de l'acheteur \\
   Port (hexagonal) & Interface définissant un contrat entre le domaine et l'infrastructure \\
   Adaptateur & Implémentation concrète d'un port (JPA, HTTP, etc.) \\
@@ -94,7 +94,7 @@
     artwork, artwork\_image, artwork\_video & Œuvres et médias \\
     artwork\_like, artwork\_comment & Interactions sociales \\
     product, order, order\_item & Commerce \\
-    payment & Transactions CamPay \\
+    payment & Transactions PaymentProvider \\
     event, reservation, ticket & Événements et billets \\
     news & Actualités \\
     subscription & Abonnement artiste \\
@@ -110,7 +110,7 @@
   \item Définir \texttt{KSM\_KERNEL\_AUTO\_PROVISION\_ARTISTS=false} pour validation manuelle
   \item Configurer credentials bootstrap admin + MFA
   \item Vérifier connexion PostgreSQL et droits création schémas
-  \item Configurer CamPay production (callback URL publique)
+  \item Configurer PaymentProvider production (callback URL publique)
   \item Configurer SMTP pour e-mails transactionnels
   \item Activer Kafka si synchronisation commandes requise
   \item Sécuriser routes chat (\texttt{permitAll} → authentification requise)

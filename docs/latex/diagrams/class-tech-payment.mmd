@@ -12,21 +12,21 @@ classDiagram
     }
 
     class PaymentPollingService {
-        Scheduled backup statut CamPay
+        Scheduled backup statut PaymentProvider
     }
 
     class PayoutService {
-        +withdraw() via CamPay
+        +withdraw() via PaymentProvider
     }
 
-    class CampayClient {
+    class PaymentProviderClient {
         +getToken()
         +collect()
         +getTransactionStatus()
         +withdraw()
     }
 
-    class CampayConfig {
+    class PaymentProviderConfig {
         app-username
         app-password
         callback-url
@@ -37,8 +37,8 @@ classDiagram
     }
 
     PaymentController --> PaymentService
-    PaymentService --> CampayClient
-    PaymentPollingService --> CampayClient
-    PayoutService --> CampayClient
-    CampayConfig --> CampayClient
+    PaymentService --> PaymentProviderClient
+    PaymentPollingService --> PaymentProviderClient
+    PayoutService --> PaymentProviderClient
+    PaymentProviderConfig --> PaymentProviderClient
     PaymentService --> WalletService

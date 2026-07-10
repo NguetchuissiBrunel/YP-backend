@@ -13,7 +13,7 @@ flowchart TB
 
     subgraph Externes["Systèmes externes"]
         Kernel[Kernel RT-Comops<br/>Port 8080]
-        CamPay[CamPay Mobile Money]
+        PaymentProvider[PaymentProvider Mobile Money]
         PG[(PostgreSQL 18)]
         Mail[Serveur SMTP]
         Kafka[Kafka optionnel]
@@ -25,8 +25,8 @@ flowchart TB
     FE -->|HTTP/JSON| YOW
 
     YOW -->|X-Client-Id, X-Api-Key, JWT| Kernel
-    YOW -->|Collect / Withdraw| CamPay
-    CamPay -.->|Webhook callback| YOW
+    YOW -->|Collect / Withdraw| PaymentProvider
+    PaymentProvider -.->|Webhook callback| YOW
     YOW -->|JDBC| PG
     YOW -->|SMTP| Mail
     Kernel -.->|Events business| Kafka

@@ -4,11 +4,11 @@ flowchart TB
     DOM[Couche Domaine<br/>Models + Ports]
     JPA[Adaptateur JPA]
     KERN[Adaptateur Kernel HTTP]
-    CAMP[Adaptateur CamPay]
+    CAMP[Adaptateur PaymentProvider]
 
     PG[(PostgreSQL)]
     KAPI[Kernel API]
-    CAPI[CamPay API]
+    CAPI[PaymentProvider API]
 
     REST --> APP
     APP --> DOM

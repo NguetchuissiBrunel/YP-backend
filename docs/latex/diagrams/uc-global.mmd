@@ -22,7 +22,7 @@ flowchart LR
     Artist((Artiste))
     Buyer((Acheteur))
     Admin((Admin))
-    CamPay[CamPay]
+    PaymentProvider[PaymentProvider]
     Kernel[Kernel]
 
     Artist --> UC1 & UC2 & UC3 & UC4 & UC5 & UC6 & UC7
@@ -31,6 +31,6 @@ flowchart LR
 
     UC8 & UC9 -.->|include| UC15
     UC4 -.->|include| UC16
-    UC15 --> CamPay
+    UC15 --> PaymentProvider
     UC16 --> Kernel
     UC1 & UC12 --> Kernel

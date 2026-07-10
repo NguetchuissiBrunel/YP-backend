@@ -76,7 +76,7 @@ La figure~\ref{fig:uc-global} présente les cas d'utilisation principaux regroup
     \textbf{Scénario nominal} &
     1. Création commande \texttt{POST /api/shop/v1/public/\{slug\}/orders}.\\
     & 2. Checkout \texttt{POST /api/shop/orders/\{id\}/checkout?phoneNumber=...}.\\
-    & 3. \texttt{PaymentService} → CamPay collect (USSD push).\\
+    & 3. \texttt{PaymentService} → PaymentProvider collect (USSD push).\\
     & 4. Callback \texttt{POST /api/payment/callback} confirme le paiement.\\
     & 5. Confirmation commande Kernel + crédit wallet + notification. \\
     \bottomrule
@@ -117,10 +117,10 @@ La figure~\ref{fig:uc-global} présente les cas d'utilisation principaux regroup
     \midrule
     Auth / Profil        & ✓ & ✓ & ✓ & Kernel \\
     Gestion œuvres         & ✓ &   &   &     \\
-    Boutique / Commandes   & ✓ & ✓ &   & Kernel, CamPay \\
-    Événements / Billets   & ✓ & ✓ &   & CamPay \\
-    Wallet / Retraits      & ✓ &   &   & CamPay \\
-    Abonnements            & ✓ &   &   & CamPay \\
+    Boutique / Commandes   & ✓ & ✓ &   & Kernel, PaymentProvider \\
+    Événements / Billets   & ✓ & ✓ &   & PaymentProvider \\
+    Wallet / Retraits      & ✓ &   &   & PaymentProvider \\
+    Abonnements            & ✓ &   &   & PaymentProvider \\
     Chat                   & ✓ & ✓ &   &     \\
     Validation artistes    &   &   & ✓ & Kernel \\
     Administration         &   &   & ✓ &     \\
