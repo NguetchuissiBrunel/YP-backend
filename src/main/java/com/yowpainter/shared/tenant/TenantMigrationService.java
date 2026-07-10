@@ -2,7 +2,6 @@ package com.yowpainter.shared.tenant;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.flywaydb.core.Flyway;
 import org.springframework.stereotype.Service;
 
 import javax.sql.DataSource;
@@ -27,17 +26,24 @@ public class TenantMigrationService {
         String schemaName = "tenant_" + organizationId.toString().replace("-", "_");
         createSchemaIfNotExist(schemaName);
 
-        log.info("Running Flyway migration for tenant schema: {}", schemaName);
-        Flyway flyway = Flyway.configure()
-                .dataSource(dataSource)
-                .schemas(schemaName)
-                .locations("classpath:db/migration/tenant")
-                .baselineOnMigrate(true)
-                .outOfOrder(true)
-                .load();
+        log.info("Running Liquibase migration for tenant schema: {}", schemaName);
+        try (Connection connection = dataSource.getConnection()) {
+            liquibase.database.Database database = liquibase.database.DatabaseFactory.getInstance()
+                    .findCorrectDatabaseImplementation(new liquibase.database.jvm.JdbcConnection(connection));
+            database.setDefaultSchemaName(schemaName);
+            database.setLiquibaseSchemaName(schemaName);
 
-        flyway.migrate();
-        log.info("Flyway migration completed for tenant schema: {}", schemaName);
+            try (liquibase.Liquibase liquibaseInstance = new liquibase.Liquibase(
+                    "db/changelog/db.changelog-tenant.yaml",
+                    new liquibase.resource.ClassLoaderResourceAccessor(),
+                    database)) {
+                liquibaseInstance.update("");
+            }
+            log.info("Liquibase migration completed for tenant schema: {}", schemaName);
+        } catch (Exception e) {
+            log.error("Failed to run Liquibase migrations for tenant schema: {}", schemaName, e);
+            throw new RuntimeException("Could not migrate schema " + schemaName, e);
+        }
     }
 
     private void createSchemaIfNotExist(String schemaName) {

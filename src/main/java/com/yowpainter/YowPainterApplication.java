@@ -11,30 +11,33 @@ public class YowPainterApplication {
     public static void main(String[] args) {
         loadEnvFile(".env");
         loadEnvFile(".env.local");
-        runFlywayMigrations();
+        runLiquibaseMigrations();
         SpringApplication.run(YowPainterApplication.class, args);
     }
 
-    private static void runFlywayMigrations() {
+    private static void runLiquibaseMigrations() {
         String url = System.getProperty("SPRING_DATASOURCE_URL");
         String user = System.getProperty("SPRING_DATASOURCE_USERNAME");
         String pass = System.getProperty("SPRING_DATASOURCE_PASSWORD");
         if (url == null || url.isEmpty()) {
             return;
         }
-        System.out.println("Running programmatic Flyway migrations on public schema...");
-        try {
-            org.flywaydb.core.Flyway flyway = org.flywaydb.core.Flyway.configure()
-                    .dataSource(url, user, pass)
-                    .schemas("public")
-                    .locations("classpath:db/migration/public")
-                    .baselineOnMigrate(true)
-                    .outOfOrder(true)
-                    .load();
-            flyway.migrate();
-            System.out.println("Programmatic Flyway migrations completed successfully.");
+        System.out.println("Running programmatic Liquibase migrations on public schema...");
+        try (java.sql.Connection connection = java.sql.DriverManager.getConnection(url, user, pass)) {
+            liquibase.database.Database database = liquibase.database.DatabaseFactory.getInstance()
+                    .findCorrectDatabaseImplementation(new liquibase.database.jvm.JdbcConnection(connection));
+            database.setDefaultSchemaName("public");
+            database.setLiquibaseSchemaName("public");
+
+            try (liquibase.Liquibase liquibaseInstance = new liquibase.Liquibase(
+                    "db/changelog/db.changelog-master.yaml",
+                    new liquibase.resource.ClassLoaderResourceAccessor(),
+                    database)) {
+                liquibaseInstance.update("");
+            }
+            System.out.println("Programmatic Liquibase migrations completed successfully.");
         } catch (Exception e) {
-            System.err.println("Failed to run Flyway migrations: " + e.getMessage());
+            System.err.println("Failed to run Liquibase migrations: " + e.getMessage());
             e.printStackTrace();
         }
     }

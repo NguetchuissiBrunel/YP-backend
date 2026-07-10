@@ -41,17 +41,8 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
-    validate-on-migrate: true
-    out-of-order: true
-
-    schemas:
-      - public
-
-    locations:
-      - classpath:db/migration/public
+  liquibase:
+    enabled: false
 
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
