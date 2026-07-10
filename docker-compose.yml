@@ -61,7 +61,6 @@ services:
       - MAIL_PORT=${MAIL_PORT:-587}
       - MAIL_USERNAME=${MAIL_USERNAME}
       - MAIL_PASSWORD=${MAIL_PASSWORD}
-      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-}
     depends_on:
       db:
         condition: service_healthy
