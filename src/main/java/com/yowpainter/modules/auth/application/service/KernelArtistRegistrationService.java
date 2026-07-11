@@ -63,15 +63,8 @@ public class KernelArtistRegistrationService {
                     onboardingData
             );
 
-            if (Boolean.FALSE.equals(signup.emailVerified()) && signup.accessToken() != null) {
-                // L'utilisateur kernel est deja cree : un echec de (re)demande de verification
-                // email (ex. OTP_RESEND_COOLDOWN) ne doit PAS faire echouer l'inscription.
-                try {
-                    kernelAuthPort.requestEmailVerification(signup.accessToken());
-                } catch (KernelClientException ex) {
-                    log.warn("requestEmailVerification apres signup ignoree (user kernel deja cree): {}", ex.getMessage());
-                }
-            }
+            // Pas de requestEmailVerification ici : le kernel envoie deja le code de verification
+            // lors du sign-up. Le redemander declencherait OTP_RESEND_COOLDOWN.
 
             UUID organizationId = resolveOrganizationId(signup, discovery);
             UUID tenantId = signup.tenantId() != null
