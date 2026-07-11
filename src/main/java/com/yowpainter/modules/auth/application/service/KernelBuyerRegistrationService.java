@@ -9,6 +9,7 @@ import com.yowpainter.modules.auth.infrastructure.adapter.in.web.dto.AuthRespons
 import com.yowpainter.modules.auth.infrastructure.adapter.in.web.dto.RegisterRequest;
 import com.yowpainter.shared.kernel.KernelClientException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class KernelBuyerRegistrationService {
 
     private static final String KERNEL_MANAGED_PASSWORD = "{KERNEL_MANAGED}";
@@ -51,7 +53,13 @@ public class KernelBuyerRegistrationService {
             );
 
             if (Boolean.FALSE.equals(signup.emailVerified()) && signup.accessToken() != null) {
-                kernelAuthPort.requestEmailVerification(signup.accessToken());
+                // L'utilisateur kernel est deja cree : un echec de (re)demande de verification
+                // email (ex. OTP_RESEND_COOLDOWN) ne doit PAS faire echouer l'inscription.
+                try {
+                    kernelAuthPort.requestEmailVerification(signup.accessToken());
+                } catch (KernelClientException ex) {
+                    log.warn("requestEmailVerification apres signup ignoree (user kernel deja cree): {}", ex.getMessage());
+                }
             }
 
             AppUser buyer = AppUser.builder()
