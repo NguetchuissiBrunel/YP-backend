@@ -64,7 +64,13 @@ public class KernelArtistRegistrationService {
             );
 
             if (Boolean.FALSE.equals(signup.emailVerified()) && signup.accessToken() != null) {
-                kernelAuthPort.requestEmailVerification(signup.accessToken());
+                // L'utilisateur kernel est deja cree : un echec de (re)demande de verification
+                // email (ex. OTP_RESEND_COOLDOWN) ne doit PAS faire echouer l'inscription.
+                try {
+                    kernelAuthPort.requestEmailVerification(signup.accessToken());
+                } catch (KernelClientException ex) {
+                    log.warn("requestEmailVerification apres signup ignoree (user kernel deja cree): {}", ex.getMessage());
+                }
             }
 
             UUID organizationId = resolveOrganizationId(signup, discovery);
