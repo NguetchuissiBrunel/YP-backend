@@ -10,8 +10,10 @@ import com.yowpainter.modules.event.domain.model.*;
 import com.yowpainter.modules.event.domain.port.out.EventRepositoryPort;
 import com.yowpainter.modules.event.domain.port.out.ReservationRepositoryPort;
 import com.yowpainter.modules.event.domain.port.out.TicketRepositoryPort;
+import com.yowpainter.modules.auth.application.service.EmailService;
 import com.yowpainter.modules.auth.domain.model.AppUser;
 import com.yowpainter.modules.auth.domain.port.out.AppUserRepositoryPort;
+import com.yowpainter.modules.notification.application.service.NotificationService;
 import com.yowpainter.shared.context.OrganizationContext;
 import com.yowpainter.shared.tenant.TenantTransactionExecutor;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,8 @@ public class EventService {
     private final AppUserRepositoryPort userRepository;
     private final TicketRepositoryPort ticketRepository;
     private final TenantTransactionExecutor tenantTransactionExecutor;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
     @Transactional
     public EventResponse createEvent(String artistEmail, EventCreateRequest request) {
@@ -292,6 +296,15 @@ public class EventService {
                 Event event = eventRepository.findById(eventId).orElseThrow();
                 AppUser user = userRepository.findByEmail(userEmail).orElseThrow();
 
+                reservationRepository.findActiveByEventIdAndUserId(eventId, user.getId())
+                        .ifPresent(existing -> {
+                            throw new IllegalArgumentException("Vous etes deja inscrit a cet evenement");
+                        });
+
+                if (event.getStatus() == EventStatus.CANCELLED) {
+                    throw new IllegalStateException("Cet evenement a ete annule");
+                }
+
                 if (!event.hasAvailableSeats()) {
                     throw new IllegalStateException("Plus de places disponibles");
                 }
@@ -451,10 +464,51 @@ public class EventService {
     public void cancelEvent(UUID id, String artistEmail) {
         Event event = eventRepository.findById(id).orElseThrow();
         Artist artist = artistRepository.findByEmail(artistEmail).orElseThrow();
-        if (!event.getArtistId().equals(artist.getId())) throw new IllegalArgumentException("Non autorise");
+        if (!event.getArtistId().equals(artist.getId())) {
+            throw new IllegalArgumentException("Non autorise");
+        }
+        if (event.getStatus() == EventStatus.CANCELLED) {
+            return;
+        }
+
+        List<Reservation> activeReservations = reservationRepository.findByEventId(id).stream()
+                .filter(reservation -> reservation.getStatus() == ReservationStatus.PENDING
+                        || reservation.getStatus() == ReservationStatus.CONFIRMED)
+                .toList();
+
+        String notificationMessage = "L'evenement \"" + event.getName() + "\" a ete annule. Votre reservation n'est plus valide.";
+        for (Reservation reservation : activeReservations) {
+            reservation.setStatus(ReservationStatus.CANCELLED);
+            reservationRepository.save(reservation);
+            ticketRepository.findByReservationId(reservation.getId()).ifPresent(ticketRepository::delete);
+            notifyBuyerOfEventCancellation(reservation, event, artist, notificationMessage);
+        }
 
         event.setStatus(EventStatus.CANCELLED);
+        event.setReservedCount(0);
         eventRepository.save(event);
+    }
+
+    private void notifyBuyerOfEventCancellation(
+            Reservation reservation,
+            Event event,
+            Artist artist,
+            String notificationMessage
+    ) {
+        userRepository.findById(reservation.getUserId()).ifPresent(user -> {
+            notificationService.createNotification(
+                    user.getId(),
+                    notificationMessage,
+                    artist.getOrganizationId()
+            );
+            if (user.getEmail() != null && !user.getEmail().isBlank()) {
+                emailService.sendEventCancellationEmail(
+                        user.getEmail(),
+                        event.getName(),
+                        artist.getArtistName()
+                );
+            }
+        });
     }
 
     @Transactional
@@ -469,6 +523,8 @@ public class EventService {
                         throw new IllegalArgumentException("Billet invalide");
                     }
                 });
+
+        ensureTicketIsValid(ticket);
         
         if (ticket.isScanned()) {
             throw new IllegalStateException("Ce billet a déjà été scanné le " + ticket.getScannedAt());
@@ -479,6 +535,23 @@ public class EventService {
         ticketRepository.save(ticket);
 
         return mapToTicketResponse(ticket);
+    }
+
+    private void ensureTicketIsValid(Ticket ticket) {
+        Reservation reservation = ticket.getReservation();
+        if (reservation == null) {
+            throw new IllegalArgumentException("Billet invalide");
+        }
+        if (reservation.getStatus() == ReservationStatus.CANCELLED) {
+            throw new IllegalStateException("Ce billet n'est plus valide : la reservation a ete annulee");
+        }
+        Event event = reservation.getEvent();
+        if (event == null) {
+            throw new IllegalArgumentException("Billet invalide");
+        }
+        if (event.getStatus() == EventStatus.CANCELLED) {
+            throw new IllegalStateException("Ce billet n'est plus valide : l'evenement a ete annule");
+        }
     }
 
     @Transactional

@@ -73,6 +73,27 @@ public class EmailService {
         sendEmail(to, subject, content);
     }
 
+    public void sendEventCancellationEmail(String to, String eventName, String artistName) {
+        String subject = "Evenement annule - YowPainter";
+        String content = "<p>Bonjour,</p>"
+                + "<p>Nous vous informons que l'evenement <strong>" + escapeHtml(eventName) + "</strong>"
+                + (artistName != null && !artistName.isBlank()
+                ? " organise par <strong>" + escapeHtml(artistName) + "</strong>"
+                : "")
+                + " a ete annule par l'organisateur.</p>"
+                + "<p>Votre reservation et votre billet ne sont plus valides.</p>"
+                + "<p>Si vous aviez effectue un paiement, l'organisateur ou notre equipe vous contactera pour le remboursement le cas echeant.</p>"
+                + "<p>L'equipe YowPainter</p>";
+        sendEmail(to, subject, content);
+    }
+
+    private static String escapeHtml(String value) {
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
+    }
+
     private void sendEmail(String to, String subject, String content) {
         try {
             MimeMessage message = mailSender.createMimeMessage();

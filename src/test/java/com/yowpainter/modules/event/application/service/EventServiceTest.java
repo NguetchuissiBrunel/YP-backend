@@ -8,6 +8,8 @@ import com.yowpainter.modules.event.domain.model.*;
 import com.yowpainter.modules.event.domain.port.out.EventRepositoryPort;
 import com.yowpainter.modules.event.domain.port.out.ReservationRepositoryPort;
 import com.yowpainter.modules.event.domain.port.out.TicketRepositoryPort;
+import com.yowpainter.modules.auth.application.service.EmailService;
+import com.yowpainter.modules.notification.application.service.NotificationService;
 import com.yowpainter.modules.event.infrastructure.adapter.in.web.dto.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,6 +57,12 @@ public class EventServiceTest {
     @Mock
     private TenantTransactionExecutor tenantTransactionExecutor;
 
+    @Mock
+    private NotificationService notificationService;
+
+    @Mock
+    private EmailService emailService;
+
     @InjectMocks
     private EventService eventService;
 
@@ -76,6 +84,9 @@ public class EventServiceTest {
             runnable.run();
             return null;
         }).when(tenantTransactionExecutor).execute(any(Runnable.class));
+
+        lenient().when(reservationRepository.findActiveByEventIdAndUserId(any(UUID.class), any(UUID.class)))
+                .thenReturn(Optional.empty());
 
         artist = Artist.builder()
                 .firstName("John")
@@ -263,6 +274,51 @@ public class EventServiceTest {
     }
 
     @Test
+    void reserveEvent_whenUserAlreadyRegistered_shouldRejectDuplicate() {
+        event.setTicketPrice(BigDecimal.ZERO);
+        event.setMaxCapacity(10);
+        event.setReservedCount(1);
+
+        when(artistRepository.findByStatus("ACTIVE")).thenReturn(List.of(artist));
+        when(eventRepository.findById(event.getId())).thenReturn(Optional.of(event));
+        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
+        when(reservationRepository.findActiveByEventIdAndUserId(event.getId(), user.getId()))
+                .thenReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> eventService.reserveEvent(event.getId(), "alice@example.com"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("deja inscrit");
+
+        verify(reservationRepository, never()).save(any(Reservation.class));
+        verify(ticketRepository, never()).save(any(Ticket.class));
+        verify(eventRepository, never()).save(any(Event.class));
+    }
+
+    @Test
+    void reserveEvent_whenPreviousReservationCancelled_shouldAllowNewRegistration() {
+        event.setTicketPrice(BigDecimal.ZERO);
+        event.setMaxCapacity(10);
+        event.setReservedCount(0);
+
+        when(artistRepository.findByStatus("ACTIVE")).thenReturn(List.of(artist));
+        when(eventRepository.findById(event.getId())).thenReturn(Optional.of(event));
+        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
+        when(reservationRepository.findActiveByEventIdAndUserId(event.getId(), user.getId()))
+                .thenReturn(Optional.empty());
+        when(eventRepository.save(any(Event.class))).thenReturn(event);
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> {
+            Reservation res = invocation.getArgument(0);
+            res.setId(UUID.randomUUID());
+            return res;
+        });
+
+        ReservationResponse response = eventService.reserveEvent(event.getId(), "alice@example.com");
+
+        assertThat(response.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
+        verify(reservationRepository).save(any(Reservation.class));
+    }
+
+    @Test
     void confirmPaidReservation_shouldUpdateStatusAndCreateTicket() {
         reservation.setStatus(ReservationStatus.PENDING);
 
@@ -337,9 +393,63 @@ public class EventServiceTest {
     }
 
     @Test
+    void cancelEvent_shouldCancelReservationsDeleteTicketsAndNotifyBuyers() {
+        reservation.setStatus(ReservationStatus.CONFIRMED);
+        event.setReservedCount(1);
+
+        when(eventRepository.findById(event.getId())).thenReturn(Optional.of(event));
+        when(artistRepository.findByEmail("john.doe@example.com")).thenReturn(Optional.of(artist));
+        when(reservationRepository.findByEventId(event.getId())).thenReturn(List.of(reservation));
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(ticketRepository.findByReservationId(reservation.getId())).thenReturn(Optional.of(ticket));
+
+        eventService.cancelEvent(event.getId(), "john.doe@example.com");
+
+        assertThat(event.getStatus()).isEqualTo(EventStatus.CANCELLED);
+        assertThat(event.getReservedCount()).isZero();
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+        verify(reservationRepository).save(reservation);
+        verify(ticketRepository).delete(ticket);
+        verify(notificationService).createNotification(eq(user.getId()), anyString(), eq(artist.getOrganizationId()));
+        verify(emailService).sendEventCancellationEmail(user.getEmail(), event.getName(), artist.getArtistName());
+        verify(eventRepository).save(event);
+    }
+
+    @Test
+    void reserveEvent_whenEventCancelled_shouldRejectRegistration() {
+        event.setStatus(EventStatus.CANCELLED);
+
+        when(artistRepository.findByStatus("ACTIVE")).thenReturn(List.of(artist));
+        when(eventRepository.findById(event.getId())).thenReturn(Optional.of(event));
+        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> eventService.reserveEvent(event.getId(), "alice@example.com"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("annule");
+
+        verify(reservationRepository, never()).save(any(Reservation.class));
+    }
+
+    @Test
+    void validateTicket_whenEventCancelled_shouldRejectScan() {
+        event.setStatus(EventStatus.CANCELLED);
+        reservation.setStatus(ReservationStatus.CANCELLED);
+        ticket.setScanned(false);
+
+        when(ticketRepository.findByQrCodeData("qrcode-123")).thenReturn(Optional.of(ticket));
+
+        assertThatThrownBy(() -> eventService.validateTicket("qrcode-123"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("annule");
+
+        verify(ticketRepository, never()).save(ticket);
+    }
+
+    @Test
     void cancelEvent_shouldSetStatusToCancelled() {
         when(eventRepository.findById(event.getId())).thenReturn(Optional.of(event));
         when(artistRepository.findByEmail("john.doe@example.com")).thenReturn(Optional.of(artist));
+        when(reservationRepository.findByEventId(event.getId())).thenReturn(List.of());
 
         eventService.cancelEvent(event.getId(), "john.doe@example.com");
 
@@ -350,6 +460,8 @@ public class EventServiceTest {
     @Test
     void validateTicket_shouldScanTicketAndReturnResponse() {
         ticket.setScanned(false);
+        reservation.setStatus(ReservationStatus.CONFIRMED);
+        event.setStatus(EventStatus.PUBLISHED);
 
         when(ticketRepository.findByQrCodeData("qrcode-123")).thenReturn(Optional.of(ticket));
 

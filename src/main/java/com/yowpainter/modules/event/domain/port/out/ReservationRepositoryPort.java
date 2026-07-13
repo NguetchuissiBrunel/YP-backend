@@ -10,4 +10,5 @@ public interface ReservationRepositoryPort {
     java.util.List<Reservation> findByEventId(UUID eventId);
     java.util.List<Reservation> findByStatusAndReservedAtBefore(com.yowpainter.modules.event.domain.model.ReservationStatus status, java.time.LocalDateTime reservedAt);
     java.util.List<Reservation> findByUserId(UUID userId);
+    java.util.Optional<Reservation> findActiveByEventIdAndUserId(UUID eventId, UUID userId);
 }

@@ -37,4 +37,9 @@ public class ReservationRepositoryAdapter implements ReservationRepositoryPort {
     public java.util.List<Reservation> findByUserId(UUID userId) {
         return jpaRepository.findByUserId(userId);
     }
+
+    @Override
+    public java.util.Optional<Reservation> findActiveByEventIdAndUserId(UUID eventId, UUID userId) {
+        return jpaRepository.findActiveByEventIdAndUserId(eventId, userId);
+    }
 }

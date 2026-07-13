@@ -18,6 +18,11 @@ public class TicketRepositoryAdapter implements TicketRepositoryPort {
     }
 
     @Override
+    public void delete(Ticket ticket) {
+        jpaRepository.delete(ticket);
+    }
+
+    @Override
     public java.util.Optional<Ticket> findByQrCodeData(String qrCodeData) {
         return jpaRepository.findByQrCodeData(qrCodeData);
     }

@@ -46,15 +46,22 @@ public class NotificationService {
     }
 
     public void createNotification(UUID userId, String message) {
+        createNotification(userId, message, null);
+    }
+
+    public void createNotification(UUID userId, String message, UUID organizationId) {
         userRepository.findById(userId).ifPresent(user -> {
             UUID kernelUserId = user.getKernelUserId();
             if (kernelUserId == null) {
                 log.warn("Notification ignoree: kernelUserId manquant pour l'utilisateur {}", userId);
                 return;
             }
+            UUID resolvedOrganizationId = organizationId != null
+                    ? organizationId
+                    : resolveOrganizationId(user);
             try {
                 kernelNotificationPort.send(new KernelNotificationPort.SendNotificationCommand(
-                        resolveOrganizationId(user),
+                        resolvedOrganizationId,
                         kernelUserId,
                         user.getEmail(),
                         "WEBSOCKET",
