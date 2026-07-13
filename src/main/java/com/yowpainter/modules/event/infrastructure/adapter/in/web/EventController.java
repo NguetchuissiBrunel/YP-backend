@@ -180,8 +180,8 @@ public class EventController {
     public ResponseEntity<ReservationResponse> reserveEvent(
             Authentication authentication,
             @PathVariable UUID eventId) {
-        String email = authenticatedUserResolver.requireEmail(authentication);
-        return ResponseEntity.ok(eventService.reserveEvent(eventId, email));
+        UUID userId = authenticatedUserResolver.requireUserId(authentication);
+        return ResponseEntity.ok(eventService.reserveEvent(eventId, userId));
     }
 
     @PostMapping("/events/reservations/{id}/checkout")

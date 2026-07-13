@@ -263,7 +263,7 @@ public class EventService {
         return allEvents;
     }
 
-    public ReservationResponse reserveEvent(UUID eventId, String userEmail) {
+    public ReservationResponse reserveEvent(UUID eventId, UUID userId) {
         UUID targetOrgId = null;
         List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
         for (Artist artist : activeArtists) {
@@ -280,65 +280,78 @@ public class EventService {
                     break;
                 }
             } catch (Exception e) {
-                // Ignore schema issues and keep searching
+                log.debug("Recherche evenement {} dans le tenant {} ignoree: {}", eventId, artist.getOrganizationId(), e.getMessage());
             } finally {
                 OrganizationContext.clear();
             }
         }
 
         if (targetOrgId == null) {
-            throw new IllegalArgumentException("Evénement introuvable");
+            throw new IllegalArgumentException("Evenement introuvable");
         }
 
         try {
             OrganizationContext.setOrganizationId(targetOrgId);
-            return tenantTransactionExecutor.execute(() -> {
-                Event event = eventRepository.findById(eventId).orElseThrow();
-                AppUser user = userRepository.findByEmail(userEmail).orElseThrow();
-
-                reservationRepository.findActiveByEventIdAndUserId(eventId, user.getId())
-                        .ifPresent(existing -> {
-                            throw new IllegalArgumentException("Vous etes deja inscrit a cet evenement");
-                        });
-
-                if (event.getStatus() == EventStatus.CANCELLED) {
-                    throw new IllegalStateException("Cet evenement a ete annule");
-                }
-
-                if (!event.hasAvailableSeats()) {
-                    throw new IllegalStateException("Plus de places disponibles");
-                }
-
-                boolean isFree = event.getTicketPrice().compareTo(java.math.BigDecimal.ZERO) == 0;
-
-                Reservation reservation = Reservation.builder()
-                        .event(event)
-                        .userId(user.getId())
-                        .status(isFree ? ReservationStatus.CONFIRMED : ReservationStatus.PENDING)
-                        .build();
-
-                event.setReservedCount(event.getReservedCount() + 1);
-                if (event.getMaxCapacity() > 0 && event.getReservedCount() >= event.getMaxCapacity()) {
-                    event.setStatus(EventStatus.FULL);
-                }
-
-                eventRepository.save(event);
-                reservation = reservationRepository.save(reservation);
-
-                if (isFree) {
-                    Ticket ticket = Ticket.builder()
-                            .reservation(reservation)
-                            .qrCodeData(reservation.getId().toString())
-                            .isScanned(false)
-                            .build();
-                    ticketRepository.save(ticket);
-                }
-
-                return mapToReservationResponse(reservation);
-            });
+            return tenantTransactionExecutor.execute(() -> reserveEventInTenant(eventId, userId));
         } finally {
             OrganizationContext.clear();
         }
+    }
+
+    public ReservationResponse reserveEvent(UUID eventId, String userEmail) {
+        AppUser user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Utilisateur introuvable"));
+        return reserveEvent(eventId, user.getId());
+    }
+
+    private ReservationResponse reserveEventInTenant(UUID eventId, UUID userId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new IllegalArgumentException("Evenement introuvable"));
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Utilisateur introuvable"));
+
+        reservationRepository.findActiveByEventIdAndUserId(eventId, user.getId())
+                .ifPresent(existing -> {
+                    throw new IllegalArgumentException("Vous etes deja inscrit a cet evenement");
+                });
+
+        if (event.getStatus() == EventStatus.CANCELLED) {
+            throw new IllegalStateException("Cet evenement a ete annule");
+        }
+
+        if (!event.hasAvailableSeats()) {
+            throw new IllegalStateException("Plus de places disponibles");
+        }
+
+        java.math.BigDecimal ticketPrice = event.getTicketPrice() != null
+                ? event.getTicketPrice()
+                : java.math.BigDecimal.ZERO;
+        boolean isFree = ticketPrice.compareTo(java.math.BigDecimal.ZERO) == 0;
+
+        Reservation reservation = Reservation.builder()
+                .event(event)
+                .userId(user.getId())
+                .status(isFree ? ReservationStatus.CONFIRMED : ReservationStatus.PENDING)
+                .build();
+
+        event.setReservedCount(event.getReservedCount() + 1);
+        if (event.getMaxCapacity() > 0 && event.getReservedCount() >= event.getMaxCapacity()) {
+            event.setStatus(EventStatus.FULL);
+        }
+
+        eventRepository.save(event);
+        reservation = reservationRepository.save(reservation);
+
+        if (isFree) {
+            Ticket ticket = Ticket.builder()
+                    .reservation(reservation)
+                    .qrCodeData(reservation.getId().toString())
+                    .isScanned(false)
+                    .build();
+            ticketRepository.save(ticket);
+        }
+
+        return mapToReservationResponse(reservation, event);
     }
 
     public void confirmPaidReservation(UUID reservationId) {
@@ -460,56 +473,89 @@ public class EventService {
         return mapToResponse(eventRepository.save(event));
     }
 
-    @Transactional
     public void cancelEvent(UUID id, String artistEmail) {
-        Event event = eventRepository.findById(id).orElseThrow();
-        Artist artist = artistRepository.findByEmail(artistEmail).orElseThrow();
+        Artist artist = artistRepository.findByEmail(artistEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Artiste introuvable"));
+        if (artist.getOrganizationId() == null) {
+            throw new IllegalStateException("Organisation artiste non configuree");
+        }
+
+        List<EventCancellationNotice> notices;
+        try {
+            OrganizationContext.setOrganizationId(artist.getOrganizationId());
+            notices = tenantTransactionExecutor.execute(() -> cancelEventInTenant(id, artist));
+        } finally {
+            OrganizationContext.clear();
+        }
+
+        for (EventCancellationNotice notice : notices) {
+            notifyBuyerOfEventCancellationSafely(notice, artist);
+        }
+    }
+
+    private List<EventCancellationNotice> cancelEventInTenant(UUID id, Artist artist) {
+        Event event = eventRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Evenement introuvable"));
         if (!event.getArtistId().equals(artist.getId())) {
             throw new IllegalArgumentException("Non autorise");
         }
         if (event.getStatus() == EventStatus.CANCELLED) {
-            return;
+            return List.of();
         }
+
+        String notificationMessage = "L'evenement \"" + event.getName() + "\" a ete annule. Votre reservation n'est plus valide.";
+        List<EventCancellationNotice> notices = new ArrayList<>();
 
         List<Reservation> activeReservations = reservationRepository.findByEventId(id).stream()
                 .filter(reservation -> reservation.getStatus() == ReservationStatus.PENDING
                         || reservation.getStatus() == ReservationStatus.CONFIRMED)
                 .toList();
 
-        String notificationMessage = "L'evenement \"" + event.getName() + "\" a ete annule. Votre reservation n'est plus valide.";
         for (Reservation reservation : activeReservations) {
+            ticketRepository.findByReservationId(reservation.getId()).ifPresent(ticketRepository::delete);
             reservation.setStatus(ReservationStatus.CANCELLED);
             reservationRepository.save(reservation);
-            ticketRepository.findByReservationId(reservation.getId()).ifPresent(ticketRepository::delete);
-            notifyBuyerOfEventCancellation(reservation, event, artist, notificationMessage);
+            userRepository.findById(reservation.getUserId()).ifPresent(user ->
+                    notices.add(new EventCancellationNotice(
+                            user.getId(),
+                            user.getEmail(),
+                            event.getName(),
+                            notificationMessage
+                    ))
+            );
         }
 
         event.setStatus(EventStatus.CANCELLED);
         event.setReservedCount(0);
         eventRepository.save(event);
+        return notices;
     }
 
-    private void notifyBuyerOfEventCancellation(
-            Reservation reservation,
-            Event event,
-            Artist artist,
-            String notificationMessage
-    ) {
-        userRepository.findById(reservation.getUserId()).ifPresent(user -> {
+    private void notifyBuyerOfEventCancellationSafely(EventCancellationNotice notice, Artist artist) {
+        try {
             notificationService.createNotification(
-                    user.getId(),
-                    notificationMessage,
+                    notice.userId(),
+                    notice.message(),
                     artist.getOrganizationId()
             );
-            if (user.getEmail() != null && !user.getEmail().isBlank()) {
+            if (notice.email() != null && !notice.email().isBlank()) {
                 emailService.sendEventCancellationEmail(
-                        user.getEmail(),
-                        event.getName(),
+                        notice.email(),
+                        notice.eventName(),
                         artist.getArtistName()
                 );
             }
-        });
+        } catch (Exception ex) {
+            log.warn("Notification d'annulation ignoree pour l'utilisateur {}: {}", notice.userId(), ex.getMessage());
+        }
     }
+
+    private record EventCancellationNotice(
+            UUID userId,
+            String email,
+            String eventName,
+            String message
+    ) {}
 
     @Transactional
     public TicketResponse validateTicket(String qrCodeData) {
@@ -614,6 +660,10 @@ public class EventService {
     }
 
     private ReservationResponse mapToReservationResponse(Reservation res) {
+        return mapToReservationResponse(res, res.getEvent());
+    }
+
+    private ReservationResponse mapToReservationResponse(Reservation res, Event event) {
         String qrCode = null;
         try {
             java.util.Optional<Ticket> ticketOpt = ticketRepository.findByReservationId(res.getId());
@@ -638,18 +688,25 @@ public class EventService {
             log.warn("Failed to retrieve user for reservation {}", res.getId(), e);
         }
 
+        UUID eventId = event != null ? event.getId() : null;
+        String eventName = event != null ? event.getName() : null;
+        String eventLocation = event != null ? event.getLocation() : null;
+        java.math.BigDecimal ticketPrice = event != null && event.getTicketPrice() != null
+                ? event.getTicketPrice()
+                : java.math.BigDecimal.ZERO;
+
         return ReservationResponse.builder()
                 .id(res.getId())
-                .eventId(res.getEvent().getId())
-                .eventName(res.getEvent().getName())
+                .eventId(eventId)
+                .eventName(eventName)
                 .userId(res.getUserId())
                 .userName(userName)
                 .userEmail(userEmail)
                 .status(res.getStatus())
                 .createdAt(res.getReservedAt() != null ? res.getReservedAt().atZone(java.time.ZoneId.systemDefault()).toInstant() : null)
                 .qrCodeData(qrCode != null ? qrCode : res.getId().toString())
-                .eventLocation(res.getEvent().getLocation())
-                .ticketPrice(res.getEvent().getTicketPrice())
+                .eventLocation(eventLocation)
+                .ticketPrice(ticketPrice)
                 .build();
     }
 

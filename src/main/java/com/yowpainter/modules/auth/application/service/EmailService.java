@@ -88,6 +88,9 @@ public class EmailService {
     }
 
     private static String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
         return value.replace("&", "&amp;")
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
@@ -106,7 +109,7 @@ public class EmailService {
 
             mailSender.send(message);
             log.info("E-mail '{}' envoyé à {}", subject, to);
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             log.error("Erreur l'envoi de l'e-mail '{}' à {}", subject, to, e);
         }
     }

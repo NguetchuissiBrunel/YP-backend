@@ -87,6 +87,13 @@ public class EventServiceTest {
 
         lenient().when(reservationRepository.findActiveByEventIdAndUserId(any(UUID.class), any(UUID.class)))
                 .thenReturn(Optional.empty());
+        lenient().when(userRepository.findById(any(UUID.class))).thenAnswer(invocation -> {
+            UUID id = invocation.getArgument(0);
+            if (user.getId().equals(id)) {
+                return Optional.of(user);
+            }
+            return Optional.empty();
+        });
 
         artist = Artist.builder()
                 .firstName("John")
@@ -408,11 +415,42 @@ public class EventServiceTest {
         assertThat(event.getStatus()).isEqualTo(EventStatus.CANCELLED);
         assertThat(event.getReservedCount()).isZero();
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
-        verify(reservationRepository).save(reservation);
         verify(ticketRepository).delete(ticket);
+        verify(reservationRepository).save(reservation);
         verify(notificationService).createNotification(eq(user.getId()), anyString(), eq(artist.getOrganizationId()));
         verify(emailService).sendEventCancellationEmail(user.getEmail(), event.getName(), artist.getArtistName());
         verify(eventRepository).save(event);
+    }
+
+    @Test
+    void cancelEvent_whenEmailFails_shouldStillCancelEvent() {
+        reservation.setStatus(ReservationStatus.CONFIRMED);
+        event.setReservedCount(1);
+
+        when(eventRepository.findById(event.getId())).thenReturn(Optional.of(event));
+        when(artistRepository.findByEmail("john.doe@example.com")).thenReturn(Optional.of(artist));
+        when(reservationRepository.findByEventId(event.getId())).thenReturn(List.of(reservation));
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(ticketRepository.findByReservationId(reservation.getId())).thenReturn(Optional.of(ticket));
+        doThrow(new RuntimeException("SMTP indisponible"))
+                .when(emailService).sendEventCancellationEmail(any(), any(), any());
+
+        eventService.cancelEvent(event.getId(), "john.doe@example.com");
+
+        assertThat(event.getStatus()).isEqualTo(EventStatus.CANCELLED);
+        verify(eventRepository).save(event);
+    }
+
+    @Test
+    void cancelEvent_whenArtistHasNoOrganization_shouldReject() {
+        artist.setOrganizationId(null);
+        when(artistRepository.findByEmail("john.doe@example.com")).thenReturn(Optional.of(artist));
+
+        assertThatThrownBy(() -> eventService.cancelEvent(event.getId(), "john.doe@example.com"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Organisation");
+
+        verify(eventRepository, never()).save(any(Event.class));
     }
 
     @Test

@@ -1,10 +1,12 @@
 package com.yowpainter.modules.event.infrastructure.adapter.out.persistence;
 
 import com.yowpainter.modules.event.domain.model.Reservation;
+import com.yowpainter.modules.event.domain.model.ReservationStatus;
 import com.yowpainter.modules.event.domain.port.out.ReservationRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -40,6 +42,10 @@ public class ReservationRepositoryAdapter implements ReservationRepositoryPort {
 
     @Override
     public java.util.Optional<Reservation> findActiveByEventIdAndUserId(UUID eventId, UUID userId) {
-        return jpaRepository.findActiveByEventIdAndUserId(eventId, userId);
+        return jpaRepository.findActiveByEventIdAndUserId(
+                eventId,
+                userId,
+                List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED)
+        );
     }
 }

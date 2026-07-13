@@ -26,6 +26,8 @@ public class RestExceptionHandler {
         } else if (message.contains("Profil local introuvable") || message.contains("pas un profil")
                 || message.contains("n'appartient pas")) {
             status = HttpStatus.FORBIDDEN;
+        } else if (message.contains("deja inscrit")) {
+            status = HttpStatus.CONFLICT;
         }
         return ResponseEntity.status(status).body(Map.of("message", message));
     }
@@ -35,11 +37,24 @@ public class RestExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", ex.getMessage()));
     }
 
+    @ExceptionHandler(java.util.NoSuchElementException.class)
+    public ResponseEntity<Map<String, String>> handleNoSuchElement(java.util.NoSuchElementException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("message", "Ressource introuvable"));
+    }
+
     @ExceptionHandler({IllegalStateException.class, KernelClientException.class})
     public ResponseEntity<Map<String, String>> handleKernelConfiguration(RuntimeException ex) {
         String message = ex.getMessage() != null ? ex.getMessage() : "Configuration kernel invalide";
-        if (ex instanceof IllegalStateException && (message.contains("places disponibles") || message.contains("déjà été scanné"))) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", message));
+        if (ex instanceof IllegalStateException illegalStateException) {
+            if (message.contains("places disponibles")
+                    || message.contains("déjà été scanné")
+                    || message.contains("annule")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", message));
+            }
+            if (message.contains("Organisation artiste")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", message));
+            }
         }
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("message", message));
     }
