@@ -56,7 +56,7 @@ public class ArtistApprovalService {
             );
         }
 
-        String mfaCode = request != null ? request.getBootstrapMfaCode() : null;
+        String mfaCode = sanitizeBootstrapMfaCode(request != null ? request.getBootstrapMfaCode() : null);
         UUID actorOverride = request != null ? request.getKernelActorId() : null;
 
         try {
@@ -172,6 +172,11 @@ public class ArtistApprovalService {
                 throw new IllegalArgumentException("AUTH_MFA_EXPIRED : Code MFA expiré.");
             } else if ("AUTH_MFA_INVALID_CODE".equals(errorCode)) {
                 throw new IllegalArgumentException("AUTH_MFA_INVALID_CODE : Code MFA invalide.");
+            } else if (messageContains(ex, "invalid mfa")) {
+                throw new IllegalArgumentException(
+                        "AUTH_MFA_INVALID_CODE : Code MFA bootstrap invalide. "
+                                + "Laissez bootstrapMfaCode vide au premier appel, puis utilisez POST .../approve/confirm."
+                );
             } else if ("AUTH_TOKEN_EXPIRED".equals(errorCode)) {
                 throw new IllegalArgumentException("AUTH_TOKEN_EXPIRED : Jeton d'accès expiré.");
             } else if ("AUTH_TOKEN_INVALID".equals(errorCode)) {
@@ -185,6 +190,24 @@ public class ArtistApprovalService {
             throw new IllegalArgumentException("NETWORK_ERROR : Erreur réseau ou Kernel indisponible.");
         }
         throw new IllegalArgumentException(ex.getMessage() != null ? ex.getMessage() : "Echec du provisioning kernel");
+    }
+
+    private static String sanitizeBootstrapMfaCode(String mfaCode) {
+        if (mfaCode == null || mfaCode.isBlank()) {
+            return null;
+        }
+        String trimmed = mfaCode.trim();
+        if ("string".equalsIgnoreCase(trimmed)) {
+            return null;
+        }
+        return trimmed;
+    }
+
+    private static boolean messageContains(RuntimeException ex, String fragment) {
+        if (ex.getMessage() == null) {
+            return false;
+        }
+        return ex.getMessage().toLowerCase().contains(fragment);
     }
 
     @Transactional
