@@ -545,6 +545,43 @@ public class EventServiceTest {
     }
 
     @Test
+    void cancelEvent_whenAlreadyCancelled_shouldStillDeleteOrphanTickets() {
+        event.setStatus(EventStatus.CANCELLED);
+        reservation.setStatus(ReservationStatus.CANCELLED);
+
+        when(eventRepository.findById(event.getId())).thenReturn(Optional.of(event));
+        when(artistRepository.findByEmail("john.doe@example.com")).thenReturn(Optional.of(artist));
+        when(reservationRepository.findByEventId(event.getId())).thenReturn(List.of(reservation));
+        when(ticketRepository.findByReservationId(reservation.getId())).thenReturn(Optional.of(ticket));
+
+        eventService.cancelEvent(event.getId(), "john.doe@example.com");
+
+        verify(ticketRepository).delete(ticket);
+        verify(notificationService, never()).createNotification(any(), anyString(), any());
+        verify(eventRepository).save(event);
+    }
+
+    @Test
+    void getMyReservations_shouldHideCancelledReservations() {
+        Reservation cancelledReservation = Reservation.builder()
+                .event(event)
+                .userId(user.getId())
+                .status(ReservationStatus.CANCELLED)
+                .reservedAt(LocalDateTime.now())
+                .build();
+        cancelledReservation.setId(UUID.randomUUID());
+
+        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
+        when(artistRepository.findByStatus("ACTIVE")).thenReturn(List.of(artist));
+        when(reservationRepository.findByUserId(user.getId())).thenReturn(List.of(cancelledReservation, reservation));
+
+        List<ReservationResponse> result = eventService.getMyReservations("alice@example.com");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getStatus()).isEqualTo(ReservationStatus.PENDING);
+    }
+
+    @Test
     void getLocations_shouldReturnLocations() {
         when(artistRepository.findByStatus("ACTIVE")).thenReturn(List.of(artist));
         when(eventRepository.findDistinctLocations()).thenReturn(List.of("Paris", "Lyon"));

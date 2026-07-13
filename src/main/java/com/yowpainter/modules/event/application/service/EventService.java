@@ -188,6 +188,7 @@ public class EventService {
                 OrganizationContext.setOrganizationId(artist.getOrganizationId());
                 List<ReservationResponse> tenantReservations = tenantTransactionExecutor.execute(() ->
                     reservationRepository.findByUserId(user.getId()).stream()
+                            .filter(this::isActiveBuyerReservation)
                             .map(this::mapToReservationResponse)
                             .collect(Collectors.toList())
                 );
@@ -499,30 +500,29 @@ public class EventService {
         if (!event.getArtistId().equals(artist.getId())) {
             throw new IllegalArgumentException("Non autorise");
         }
-        if (event.getStatus() == EventStatus.CANCELLED) {
-            return List.of();
-        }
 
+        boolean alreadyCancelled = event.getStatus() == EventStatus.CANCELLED;
         String notificationMessage = "L'evenement \"" + event.getName() + "\" a ete annule. Votre reservation n'est plus valide.";
         List<EventCancellationNotice> notices = new ArrayList<>();
 
-        List<Reservation> activeReservations = reservationRepository.findByEventId(id).stream()
-                .filter(reservation -> reservation.getStatus() == ReservationStatus.PENDING
-                        || reservation.getStatus() == ReservationStatus.CONFIRMED)
-                .toList();
-
-        for (Reservation reservation : activeReservations) {
+        List<Reservation> reservations = reservationRepository.findByEventId(id);
+        for (Reservation reservation : reservations) {
             ticketRepository.findByReservationId(reservation.getId()).ifPresent(ticketRepository::delete);
-            reservation.setStatus(ReservationStatus.CANCELLED);
-            reservationRepository.save(reservation);
-            userRepository.findById(reservation.getUserId()).ifPresent(user ->
-                    notices.add(new EventCancellationNotice(
-                            user.getId(),
-                            user.getEmail(),
-                            event.getName(),
-                            notificationMessage
-                    ))
-            );
+
+            if (reservation.getStatus() != ReservationStatus.CANCELLED) {
+                reservation.setStatus(ReservationStatus.CANCELLED);
+                reservationRepository.save(reservation);
+                if (!alreadyCancelled) {
+                    userRepository.findById(reservation.getUserId()).ifPresent(user ->
+                            notices.add(new EventCancellationNotice(
+                                    user.getId(),
+                                    user.getEmail(),
+                                    event.getName(),
+                                    notificationMessage
+                            ))
+                    );
+                }
+            }
         }
 
         event.setStatus(EventStatus.CANCELLED);
@@ -565,6 +565,8 @@ public class EventService {
                         UUID reservationId = UUID.fromString(qrCodeData);
                         return ticketRepository.findByReservationId(reservationId)
                                 .orElseThrow(() -> new IllegalArgumentException("Billet invalide"));
+                    } catch (IllegalArgumentException ex) {
+                        throw ex;
                     } catch (Exception e) {
                         throw new IllegalArgumentException("Billet invalide");
                     }
@@ -659,6 +661,14 @@ public class EventService {
                 .build();
     }
 
+    private boolean isActiveBuyerReservation(Reservation reservation) {
+        if (reservation.getStatus() == ReservationStatus.CANCELLED) {
+            return false;
+        }
+        Event event = reservation.getEvent();
+        return event == null || event.getStatus() != EventStatus.CANCELLED;
+    }
+
     private ReservationResponse mapToReservationResponse(Reservation res) {
         return mapToReservationResponse(res, res.getEvent());
     }
@@ -695,6 +705,8 @@ public class EventService {
                 ? event.getTicketPrice()
                 : java.math.BigDecimal.ZERO;
 
+        String resolvedQrCode = resolveQrCodeData(res, event, qrCode);
+
         return ReservationResponse.builder()
                 .id(res.getId())
                 .eventId(eventId)
@@ -704,10 +716,26 @@ public class EventService {
                 .userEmail(userEmail)
                 .status(res.getStatus())
                 .createdAt(res.getReservedAt() != null ? res.getReservedAt().atZone(java.time.ZoneId.systemDefault()).toInstant() : null)
-                .qrCodeData(qrCode != null ? qrCode : res.getId().toString())
+                .qrCodeData(resolvedQrCode)
                 .eventLocation(eventLocation)
                 .ticketPrice(ticketPrice)
                 .build();
+    }
+
+    private String resolveQrCodeData(Reservation reservation, Event event, String ticketQrCode) {
+        if (reservation.getStatus() == ReservationStatus.CANCELLED) {
+            return null;
+        }
+        if (event != null && event.getStatus() == EventStatus.CANCELLED) {
+            return null;
+        }
+        if (ticketQrCode != null) {
+            return ticketQrCode;
+        }
+        if (reservation.getStatus() == ReservationStatus.CONFIRMED) {
+            return reservation.getId().toString();
+        }
+        return null;
     }
 
     private TicketResponse mapToTicketResponse(Ticket ticket) {
