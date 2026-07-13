@@ -10,6 +10,7 @@ public interface ArtistJpaRepository extends JpaRepository<Artist, java.util.UUI
     java.util.Optional<Artist> findByEmail(String email);
     java.util.Optional<Artist> findByKernelUserId(java.util.UUID kernelUserId);
     java.util.List<Artist> findByStatus(String status);
+    java.util.List<Artist> findByStatusIn(java.util.Collection<String> statuses);
 
     @Query("SELECT a FROM Artist a WHERE a.organizationId IS NOT NULL AND a.kernelActorId IS NOT NULL")
     java.util.List<Artist> findAllWithValidatedOrganization();

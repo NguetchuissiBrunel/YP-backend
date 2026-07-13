@@ -10,6 +10,7 @@ public interface ArtistRepositoryPort {
     java.util.Optional<Artist> findByEmail(String email);
     java.util.Optional<Artist> findByKernelUserId(UUID kernelUserId);
     java.util.List<Artist> findByStatus(String status);
+    java.util.List<Artist> findByStatusIn(java.util.Collection<String> statuses);
     java.util.List<Artist> findAllWithValidatedOrganization();
     java.util.List<Artist> findAll();
     Artist save(Artist artist);

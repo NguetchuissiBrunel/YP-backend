@@ -39,6 +39,11 @@ public class ArtistRepositoryAdapter implements ArtistRepositoryPort {
     }
 
     @Override
+    public java.util.List<Artist> findByStatusIn(java.util.Collection<String> statuses) {
+        return jpaRepository.findByStatusIn(statuses);
+    }
+
+    @Override
     public java.util.List<Artist> findAllWithValidatedOrganization() {
         return jpaRepository.findAllWithValidatedOrganization();
     }

@@ -7,6 +7,7 @@ import com.yowpainter.modules.admin.infrastructure.adapter.in.web.dto.ArtistAppr
 import com.yowpainter.modules.admin.infrastructure.adapter.in.web.dto.PendingArtistResponse;
 import com.yowpainter.modules.admin.infrastructure.adapter.in.web.dto.RejectArtistRequest;
 import com.yowpainter.modules.artist.domain.model.Artist;
+import com.yowpainter.modules.artist.domain.model.ArtistRegistrationStatus;
 import com.yowpainter.modules.artist.domain.model.PendingProvisionSession;
 import com.yowpainter.modules.artist.domain.port.out.ArtistRepositoryPort;
 import com.yowpainter.modules.artist.domain.port.out.PendingProvisionSessionRepositoryPort;
@@ -28,9 +29,8 @@ import java.util.UUID;
 @Slf4j
 public class ArtistApprovalService {
 
-    private static final String STATUS_PENDING_APPROVAL = "PENDING_APPROVAL";
-    private static final String STATUS_ACTIVE = "ACTIVE";
-    private static final String STATUS_REJECTED = "REJECTED";
+    private static final String STATUS_ACTIVE = ArtistRegistrationStatus.ACTIVE;
+    private static final String STATUS_REJECTED = ArtistRegistrationStatus.REJECTED;
 
     private final ArtistRepositoryPort artistRepository;
     private final KernelArtistProvisioningService kernelArtistProvisioningService;
@@ -39,7 +39,7 @@ public class ArtistApprovalService {
     private final KernelBootstrapAdminSession bootstrapAdminSession;
 
     public List<PendingArtistResponse> listPendingArtists() {
-        return artistRepository.findByStatus(STATUS_PENDING_APPROVAL).stream()
+        return artistRepository.findByStatusIn(ArtistRegistrationStatus.pendingAdminApprovalStatuses()).stream()
                 .sorted(Comparator.comparing(Artist::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
                 .map(this::toPendingResponse)
                 .toList();
@@ -50,7 +50,7 @@ public class ArtistApprovalService {
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> new IllegalArgumentException("Artiste non trouve"));
 
-        if (!STATUS_PENDING_APPROVAL.equalsIgnoreCase(artist.getStatus())) {
+        if (!ArtistRegistrationStatus.isPendingAdminApproval(artist.getStatus())) {
             throw new IllegalArgumentException(
                     "Seuls les artistes en attente peuvent etre approuves (statut actuel: " + artist.getStatus() + ")"
             );
@@ -192,7 +192,7 @@ public class ArtistApprovalService {
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> new IllegalArgumentException("Artiste non trouve"));
 
-        if (!STATUS_PENDING_APPROVAL.equalsIgnoreCase(artist.getStatus())) {
+        if (!ArtistRegistrationStatus.isPendingAdminApproval(artist.getStatus())) {
             throw new IllegalArgumentException(
                     "Seuls les artistes en attente peuvent etre refuses (statut actuel: " + artist.getStatus() + ")"
             );
@@ -223,7 +223,7 @@ public class ArtistApprovalService {
                 .lastName(artist.getLastName())
                 .artistName(artist.getArtistName())
                 .slug(artist.getSlug())
-                .status(artist.getStatus())
+                .status(ArtistRegistrationStatus.PENDING_APPROVAL)
                 .kernelUserId(artist.getKernelUserId())
                 .kernelActorId(artist.getKernelActorId())
                 .organizationId(artist.getOrganizationId())
