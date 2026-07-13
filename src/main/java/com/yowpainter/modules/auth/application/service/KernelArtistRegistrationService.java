@@ -63,9 +63,8 @@ public class KernelArtistRegistrationService {
                     onboardingData
             );
 
-            if (Boolean.FALSE.equals(signup.emailVerified()) && signup.accessToken() != null) {
-                kernelAuthPort.requestEmailVerification(signup.accessToken());
-            }
+            // Pas de requestEmailVerification ici : le kernel envoie deja le code de verification
+            // lors du sign-up. Le redemander declencherait OTP_RESEND_COOLDOWN.
 
             UUID organizationId = resolveOrganizationId(signup, discovery);
             UUID tenantId = signup.tenantId() != null

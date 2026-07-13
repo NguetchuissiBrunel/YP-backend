@@ -50,9 +50,8 @@ public class KernelBuyerRegistrationService {
                     onboardingData
             );
 
-            if (Boolean.FALSE.equals(signup.emailVerified()) && signup.accessToken() != null) {
-                kernelAuthPort.requestEmailVerification(signup.accessToken());
-            }
+            // Pas de requestEmailVerification ici : le kernel envoie deja le code de verification
+            // lors du sign-up. Le redemander declencherait OTP_RESEND_COOLDOWN.
 
             AppUser buyer = AppUser.builder()
                     .firstName(request.getFirstName())
