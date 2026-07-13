@@ -116,6 +116,21 @@ public class AuthServiceTest {
     }
 
     @Test
+    void loginAdmin_shouldDelegateToKernelAdminRegistration() {
+        LoginRequest request = LoginRequest.builder()
+                .email("admin@example.com")
+                .password("secret")
+                .build();
+        AuthResponse expected = AuthResponse.builder().accessToken("admin-token").role("ROLE_ADMIN").build();
+        when(kernelAdminRegistrationService.loginAdmin(request)).thenReturn(expected);
+
+        AuthResponse response = authService.loginAdmin(request);
+
+        assertThat(response).isEqualTo(expected);
+        verify(kernelAdminRegistrationService).loginAdmin(request);
+    }
+
+    @Test
     void registerAdmin_shouldDelegateToKernelAdminRegistration() {
         AdminRegisterRequest request = AdminRegisterRequest.builder()
                 .email("admin@example.com")

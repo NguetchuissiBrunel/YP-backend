@@ -27,7 +27,7 @@ public class AdminAuthController {
     @PostMapping("/login")
     @Operation(summary = "Connexion Administrateur")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+        return ResponseEntity.ok(authService.loginAdmin(request));
     }
 
     @PostMapping("/register")

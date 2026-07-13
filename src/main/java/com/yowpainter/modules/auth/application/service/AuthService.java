@@ -134,6 +134,11 @@ public class AuthService {
     }
 
     @Transactional
+    public AuthResponse loginAdmin(LoginRequest request) {
+        return kernelAdminRegistrationService.loginAdmin(request);
+    }
+
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         try {
             KernelAuthPort.KernelLoginResult loginResult = kernelAuthPort.login(
