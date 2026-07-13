@@ -5,6 +5,7 @@ import com.yowpainter.modules.auth.application.port.out.KernelAuthPort;
 import com.yowpainter.modules.auth.domain.model.AppUser;
 import com.yowpainter.modules.auth.infrastructure.adapter.in.web.dto.AuthResponse;
 import com.yowpainter.shared.security.KernelAuthorityMapper;
+import com.yowpainter.shared.kernel.KernelOrganizationResolver;
 
 import java.util.List;
 import java.util.UUID;
@@ -117,10 +118,7 @@ final class KernelAuthMapper {
         if (artist != null && artist.getOrganizationId() != null) {
             return artist.getOrganizationId();
         }
-        if (loginResult.organizations() != null && loginResult.organizations().size() == 1) {
-            return loginResult.organizations().get(0).organizationId();
-        }
-        return null;
+        return KernelOrganizationResolver.resolveOrganizationId(loginResult, null).orElse(null);
     }
 
     private static String resolveRole(KernelAuthPort.KernelLoginResult loginResult, AppUser user) {

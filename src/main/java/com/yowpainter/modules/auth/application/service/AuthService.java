@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.yowpainter.shared.tenant.TenantMigrationService;
 import com.yowpainter.shared.kernel.KernelStatusResolver;
+import com.yowpainter.shared.kernel.KernelOrganizationResolver;
 
 @Service
 @RequiredArgsConstructor
@@ -334,15 +335,22 @@ public class AuthService {
 
     private Artist refreshArtistStatus(Artist artist, KernelAuthPort.KernelLoginResult loginResult) {
         String oldStatus = artist.getStatus();
-        
-        if (loginResult.organizations() != null && !loginResult.organizations().isEmpty()) {
-            artist.setOrganizationId(loginResult.organizations().get(0).organizationId());
+        KernelAuthPort.KernelUserProfile kernelProfile = fetchKernelProfile(loginResult);
+
+        UUID organizationId = KernelOrganizationResolver.resolveOrganizationId(loginResult, kernelProfile)
+                .orElse(null);
+        if (organizationId != null) {
+            artist.setOrganizationId(organizationId);
         }
         if (loginResult.actorId() != null) {
             artist.setKernelActorId(loginResult.actorId());
+        } else if (kernelProfile != null && kernelProfile.actorId() != null) {
+            artist.setKernelActorId(kernelProfile.actorId());
         }
         if (loginResult.tenantId() != null) {
             artist.setTenantId(loginResult.tenantId());
+        } else if (kernelProfile != null && kernelProfile.tenantId() != null) {
+            artist.setTenantId(kernelProfile.tenantId());
         }
 
         String newStatus;
@@ -373,6 +381,21 @@ public class AuthService {
         
         kernelArtistRegistrationService.provisionArtistIfPending(artist, loginResult);
         return artistRepository.save(artist);
+    }
+
+    private KernelAuthPort.KernelUserProfile fetchKernelProfile(KernelAuthPort.KernelLoginResult loginResult) {
+        if (loginResult.accessToken() == null || loginResult.accessToken().isBlank()) {
+            return null;
+        }
+        if (loginResult.organizations() != null && !loginResult.organizations().isEmpty()) {
+            return null;
+        }
+        try {
+            return kernelAuthPort.me(loginResult.accessToken());
+        } catch (RuntimeException ex) {
+            log.debug("Profil kernel /me ignore pour {}: {}", loginResult.email(), ex.getMessage());
+            return null;
+        }
     }
 
     private AppUser linkKernelUserId(AppUser user, UUID kernelUserId) {

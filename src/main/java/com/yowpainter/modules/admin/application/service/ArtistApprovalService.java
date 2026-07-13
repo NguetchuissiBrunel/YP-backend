@@ -71,8 +71,7 @@ public class ArtistApprovalService {
             artist.setStatus(STATUS_ACTIVE);
             artistRepository.save(artist);
 
-            // Execute tenant schema migration programmatically
-            tenantMigrationService.migrateTenant(provisioned.organizationId());
+            runTenantMigrationSafely(provisioned.organizationId(), artist.getEmail());
 
             log.info("[provision] PROVISION_SUCCESS pour {} (org={}, actor={})", artist.getEmail(), provisioned.organizationId(),
                     provisioned.businessActorId());
@@ -129,8 +128,7 @@ public class ArtistApprovalService {
             artist.setStatus(STATUS_ACTIVE);
             artistRepository.save(artist);
 
-            // Execute tenant schema migration programmatically
-            tenantMigrationService.migrateTenant(provisioned.organizationId());
+            runTenantMigrationSafely(provisioned.organizationId(), artist.getEmail());
 
             // Clean up temporary MFA session
             pendingProvisionSessionRepository.deleteById(artistId);
@@ -158,6 +156,22 @@ public class ArtistApprovalService {
             log.warn("Echec confirmation approbation artiste {}: {}", artist.getEmail(), ex.getMessage());
             handleKernelException(ex);
             return null; // unreachable due to exception thrown by handleKernelException
+        }
+    }
+
+    private void runTenantMigrationSafely(UUID organizationId, String artistEmail) {
+        if (organizationId == null) {
+            return;
+        }
+        try {
+            tenantMigrationService.migrateTenant(organizationId);
+        } catch (Exception ex) {
+            log.error(
+                    "Migration tenant ignoree apres approbation de {} (org={}): {}",
+                    artistEmail,
+                    organizationId,
+                    ex.getMessage()
+            );
         }
     }
 
