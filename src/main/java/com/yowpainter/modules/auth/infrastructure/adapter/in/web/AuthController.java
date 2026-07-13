@@ -71,7 +71,13 @@ public class AuthController {
     @PostMapping("/login")
     @Operation(summary = "Connexion et recuperation du token JWT")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+        try {
+            return ResponseEntity.ok(authService.login(request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(AuthResponse.builder()
+                    .message(e.getMessage())
+                    .build());
+        }
     }
 
     @PostMapping("/refresh")

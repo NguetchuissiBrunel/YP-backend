@@ -145,7 +145,7 @@ public class AuthService {
                     request.getEmail(),
                     request.getPassword()
             );
-            AppUser user = syncLocalUserLink(loginResult);
+            AppUser user = resolveLocalUserAfterLogin(loginResult);
             return KernelAuthMapper.toAuthResponse(loginResult, user);
         } catch (KernelClientException ex) {
             throw new IllegalArgumentException(
@@ -170,6 +170,134 @@ public class AuthService {
         if (refreshToken != null && !refreshToken.isBlank()) {
             kernelAuthPort.logout(refreshToken);
         }
+    }
+
+    private AppUser resolveLocalUserAfterLogin(KernelAuthPort.KernelLoginResult loginResult) {
+        try {
+            AppUser user = syncLocalUserLink(loginResult);
+            if (user != null) {
+                return user;
+            }
+            return createLocalProfileFromKernel(loginResult);
+        } catch (RuntimeException ex) {
+            log.warn(
+                    "Synchronisation profil local ignoree pour {} ({}): {}",
+                    loginResult.email(),
+                    ex.getClass().getSimpleName(),
+                    ex.getMessage()
+            );
+            return null;
+        }
+    }
+
+    private AppUser createLocalProfileFromKernel(KernelAuthPort.KernelLoginResult loginResult) {
+        if (loginResult.email() == null || loginResult.email().isBlank()) {
+            return null;
+        }
+        if (isArtistKernelAccount(loginResult)) {
+            return createArtistProfileFromKernel(loginResult);
+        }
+        return createBuyerProfileFromKernel(loginResult);
+    }
+
+    private Artist createArtistProfileFromKernel(KernelAuthPort.KernelLoginResult loginResult) {
+        String artistName = resolveDisplayName(loginResult);
+        String slug = generateUniqueArtistSlug(artistName, loginResult.email());
+        UUID organizationId = loginResult.organizations() != null && !loginResult.organizations().isEmpty()
+                ? loginResult.organizations().get(0).organizationId()
+                : null;
+
+        Artist artist = Artist.builder()
+                .firstName(loginResult.firstName())
+                .lastName(loginResult.lastName())
+                .email(loginResult.email())
+                .passwordHash(passwordEncoder.encode(KERNEL_MANAGED_PASSWORD))
+                .role(UserRole.ROLE_ARTIST)
+                .artistName(artistName)
+                .slug(slug)
+                .status(resolveArtistStatusFromKernel(loginResult, organizationId))
+                .kernelUserId(loginResult.userId())
+                .kernelActorId(loginResult.actorId())
+                .organizationId(organizationId)
+                .tenantId(loginResult.tenantId())
+                .profilePictureUrl(loginResult.profilePictureUrl())
+                .build();
+        artist = artistRepository.save(artist);
+        log.info(
+                "Profil artiste local recree pour {} (kernelUserId={}, status={})",
+                artist.getEmail(),
+                artist.getKernelUserId(),
+                artist.getStatus()
+        );
+        return artist;
+    }
+
+    private AppUser createBuyerProfileFromKernel(KernelAuthPort.KernelLoginResult loginResult) {
+        AppUser buyer = AppUser.builder()
+                .firstName(loginResult.firstName())
+                .lastName(loginResult.lastName())
+                .email(loginResult.email())
+                .passwordHash(passwordEncoder.encode(KERNEL_MANAGED_PASSWORD))
+                .role(UserRole.ROLE_BUYER)
+                .kernelUserId(loginResult.userId())
+                .profilePictureUrl(loginResult.profilePictureUrl())
+                .build();
+        buyer = userRepository.save(buyer);
+        log.info("Profil acheteur local recree pour {} (kernelUserId={})", buyer.getEmail(), buyer.getKernelUserId());
+        return buyer;
+    }
+
+    private boolean isArtistKernelAccount(KernelAuthPort.KernelLoginResult loginResult) {
+        if ("BUSINESS".equalsIgnoreCase(loginResult.actorType())) {
+            return true;
+        }
+        return loginResult.organizations() != null && !loginResult.organizations().isEmpty();
+    }
+
+    private String resolveArtistStatusFromKernel(
+            KernelAuthPort.KernelLoginResult loginResult,
+            UUID organizationId
+    ) {
+        if (organizationId != null && loginResult.actorId() != null) {
+            return "ACTIVE";
+        }
+        return KernelStatusResolver.determineStatusFromKernel(
+                loginResult.emailVerified(),
+                loginResult.registrationStatus(),
+                loginResult.accountStatus(),
+                loginResult.organizations(),
+                loginResult.actorId()
+        );
+    }
+
+    private String resolveDisplayName(KernelAuthPort.KernelLoginResult loginResult) {
+        if (loginResult.firstName() != null && loginResult.lastName() != null) {
+            return loginResult.firstName() + " " + loginResult.lastName();
+        }
+        if (loginResult.firstName() != null && !loginResult.firstName().isBlank()) {
+            return loginResult.firstName();
+        }
+        if (loginResult.username() != null && !loginResult.username().isBlank()) {
+            return loginResult.username();
+        }
+        return loginResult.email().split("@")[0];
+    }
+
+    private String generateUniqueArtistSlug(String artistName, String email) {
+        String base = artistName != null ? artistName : email.split("@")[0];
+        String slug = base.toLowerCase()
+                .trim()
+                .replaceAll("[^a-z0-9\\s-]", "")
+                .replaceAll("\\s+", "-")
+                .replaceAll("-+", "-")
+                .replaceAll("^-|-$", "");
+        if (slug.isBlank()) {
+            slug = "artist";
+        }
+        if (artistRepository.findBySlug(slug).isEmpty()) {
+            return slug;
+        }
+        return slug + "-" + UUID.randomUUID().toString().substring(0, 5);
     }
 
     private AppUser syncLocalUserLink(KernelAuthPort.KernelLoginResult loginResult) {

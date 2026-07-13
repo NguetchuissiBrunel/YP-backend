@@ -125,7 +125,12 @@ final class KernelAuthMapper {
 
     private static String resolveRole(KernelAuthPort.KernelLoginResult loginResult, AppUser user) {
         if (user != null) {
-            return user.getRole().name();
+            if (user.getRole() != null) {
+                return user.getRole().name();
+            }
+            if (user instanceof Artist) {
+                return "ROLE_ARTIST";
+            }
         }
         if (loginResult.authorities() != null
                 && loginResult.authorities().stream().anyMatch(KernelAuthorityMapper::isKernelAdminAuthority)) {

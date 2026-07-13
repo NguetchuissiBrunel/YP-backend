@@ -56,6 +56,15 @@ public class AuthServiceTest {
     @Mock
     private KernelAdminRegistrationService kernelAdminRegistrationService;
 
+    @Mock
+    private com.yowpainter.shared.tenant.TenantMigrationService tenantMigrationService;
+
+    @Mock
+    private com.yowpainter.shared.kernel.KernelBootstrapAdminSession kernelBootstrapAdminSession;
+
+    @Mock
+    private com.yowpainter.shared.kernel.port.KernelFilePort kernelFilePort;
+
     @InjectMocks
     private AuthService authService;
 
@@ -183,6 +192,77 @@ public class AuthServiceTest {
     }
 
     @Test
+    void login_shouldCreateBuyerProfileWhenLocalProfileMissing() {
+        LoginRequest request = LoginRequest.builder()
+                .email("alice@example.com")
+                .password("password123")
+                .build();
+
+        when(kernelAuthPort.login("alice@example.com", "password123"))
+                .thenReturn(mockLoginResult(
+                        UUID.randomUUID(),
+                        "alice",
+                        "alice@example.com",
+                        "access",
+                        "refresh",
+                        Set.of("ROLE_BUYER"),
+                        "PROSPECT"
+                ));
+        when(artistRepository.findByKernelUserId(any())).thenReturn(Optional.empty());
+        when(userRepository.findByKernelUserId(any())).thenReturn(Optional.empty());
+        when(artistRepository.findByEmail("alice@example.com")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("{KERNEL_MANAGED}")).thenReturn("hashed");
+        when(userRepository.save(any(AppUser.class))).thenAnswer(invocation -> {
+            AppUser saved = invocation.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            return saved;
+        });
+
+        AuthResponse response = authService.login(request);
+
+        assertThat(response.getAccessToken()).isEqualTo("access");
+        assertThat(response.getRole()).isEqualTo("ROLE_BUYER");
+        verify(userRepository).save(any(AppUser.class));
+    }
+
+    @Test
+    void login_shouldCreateArtistProfileWhenLocalProfileMissing() {
+        LoginRequest request = LoginRequest.builder()
+                .email("john.doe@example.com")
+                .password("password123")
+                .build();
+
+        when(kernelAuthPort.login("john.doe@example.com", "password123"))
+                .thenReturn(mockLoginResult(
+                        UUID.randomUUID(),
+                        "john",
+                        "john.doe@example.com",
+                        "access",
+                        "refresh",
+                        Set.of("ROLE_ARTIST"),
+                        "BUSINESS"
+                ));
+        when(artistRepository.findByKernelUserId(any())).thenReturn(Optional.empty());
+        when(userRepository.findByKernelUserId(any())).thenReturn(Optional.empty());
+        when(artistRepository.findByEmail("john.doe@example.com")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("john.doe@example.com")).thenReturn(Optional.empty());
+        when(artistRepository.findBySlug(any())).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("{KERNEL_MANAGED}")).thenReturn("hashed");
+        when(artistRepository.save(any(Artist.class))).thenAnswer(invocation -> {
+            Artist saved = invocation.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            return saved;
+        });
+
+        AuthResponse response = authService.login(request);
+
+        assertThat(response.getAccessToken()).isEqualTo("access");
+        assertThat(response.getRole()).isEqualTo("ROLE_ARTIST");
+        verify(artistRepository).save(any(Artist.class));
+    }
+
+    @Test
     void login_shouldDelegateToKernel() {
         LoginRequest request = LoginRequest.builder()
                 .email("john.doe@example.com")
@@ -190,7 +270,7 @@ public class AuthServiceTest {
                 .build();
 
         when(kernelAuthPort.login("john.doe@example.com", "password123"))
-                .thenReturn(mockLoginResult(UUID.randomUUID(), "john", "john.doe@example.com", "access", "refresh", Set.of("ROLE_ARTIST")));
+                .thenReturn(mockLoginResult(UUID.randomUUID(), "john", "john.doe@example.com", "access", "refresh", Set.of("ROLE_ARTIST"), "BUSINESS"));
         when(artistRepository.findByKernelUserId(any())).thenReturn(Optional.of(artist));
         when(artistRepository.save(any(Artist.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -203,7 +283,7 @@ public class AuthServiceTest {
     @Test
     void refreshToken_shouldDelegateToKernel() {
         when(kernelAuthPort.refresh("refresh-token"))
-                .thenReturn(mockLoginResult(UUID.randomUUID(), "refreshed", "refreshed@example.com", "new-access", "refresh-token", Set.of("ROLE_BUYER")));
+                .thenReturn(mockLoginResult(UUID.randomUUID(), "refreshed", "refreshed@example.com", "new-access", "refresh-token", Set.of("ROLE_BUYER"), "PROSPECT"));
 
         AuthResponse response = authService.refreshToken("refresh-token");
 
@@ -216,11 +296,19 @@ public class AuthServiceTest {
         verify(refreshTokenService).deleteByUserId(buyer.getId());
     }
 
-    private KernelAuthPort.KernelLoginResult mockLoginResult(UUID userId, String username, String email, String accessToken, String refreshToken, Set<String> roles) {
+    private KernelAuthPort.KernelLoginResult mockLoginResult(
+            UUID userId,
+            String username,
+            String email,
+            String accessToken,
+            String refreshToken,
+            Set<String> roles,
+            String actorType
+    ) {
         return new KernelAuthPort.KernelLoginResult(
                 userId,
                 UUID.randomUUID(),
-                UUID.randomUUID(),
+                "BUSINESS".equalsIgnoreCase(actorType) ? UUID.randomUUID() : null,
                 username,
                 email,
                 null,
@@ -230,7 +318,7 @@ public class AuthServiceTest {
                 "COMMERCE",
                 "COMPLETED",
                 0,
-                "INDIVIDUAL",
+                actorType,
                 null,
                 null,
                 true,
