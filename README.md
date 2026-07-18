@@ -11,8 +11,8 @@ Le projet a été récemment modernisé vers les standards les plus récents :
 *   **Base de Données** : PostgreSQL 18.0
 *   **Multi-Tenancy** : Isolation par schéma (Schema-per-tenant) via Hibernate 6
 *   **Sécurité** : Spring Security 7.0 avec Authentification JWT (Stateless)
-*   **Paiements** : Intégration mobile money via **PaymentProvider** (MTN, Orange, MoMo Pay)
-*   **Migrations** : Flyway (gestion automatique des schémas public et artistes)
+*   **Paiements** : Encaissement **délégué au Kernel Core** (module billing) — MyCoolPay (Mobile Money) et Stripe (carte). Le backend n'intègre aucun PSP en direct.
+*   **Migrations** : Liquibase (gestion automatique des schémas public et artistes)
 *   **Documentation** : OpenAPI 3 / Swagger UI (SpringDoc v3)
 *   **E-mails** : Spring Boot Mail (pour la récupération de mot de passe)
 *   **Utilitaires** : Lombok, Jakarta Validation
@@ -24,7 +24,7 @@ Le backend de YowPainter suit une **Architecture Hexagonale (Ports & Adapters)**
 ### 🌌 Avantages de cette architecture
 1. **Indépendance des Frameworks** : Le cœur de l'application (le Domaine) ne dépend d'aucune bibliothèque externe ni du framework Spring Boot.
 2. **Facilité de Test** : La logique métier peut être testée unitairement de manière extrêmement simple et rapide en simulant (mockant) ou en implémentant de simples doublons (stubs) pour les ports de sortie.
-3. **Flexibilité et Évolutivité** : Remplacer un composant technique (ex: changer de base de données ou de fournisseur de paiement comme PaymentProvider) se fait simplement en implémentant un nouvel adaptateur sans altérer la logique métier centrale.
+3. **Flexibilité et Évolutivité** : Remplacer un composant technique (ex: changer de base de données, ou brancher un nouvel endpoint de paiement du Kernel) se fait simplement en implémentant un nouvel adaptateur sans altérer la logique métier centrale.
 
 ---
 
@@ -37,7 +37,7 @@ flowchart TB
         in_rest[REST Controllers / DTOs]
         in_ws[WebSocket Endpoints]
         out_jpa[JPA Repositories]
-        out_client[PaymentProvider Payment API Client]
+        out_client[Kernel Core API Client <br> (billing, wallet, blockchain)]
         out_mail[Email Sender API Implementation]
     end
 
@@ -92,11 +92,17 @@ com.yowpainter.modules.<nom-du-module>/
 *   **Multi-Tenant Provisioning** : Chaque nouvel artiste reçoit automatiquement son propre schéma de base de données isolé.
 *   **Réinitialisation de mot de passe** : Système complet par jeton UUID envoyé par e-mail sécurisé.
 
-### 💰 Système de Paiement (PaymentProvider)
-*   **Flux Mobile Money** : Notification USSD Push directe sur le téléphone de l'acheteur.
+### 💰 Système de Paiement (délégué au Kernel Core)
+
+Le backend **n'intègre plus aucun fournisseur de paiement en direct**. L'encaissement est confié au module *billing* du Kernel Core, qui pilote les PSP (MyCoolPay pour le Mobile Money, Stripe pour la carte).
+
+*   **Initiation** : `POST /api/payments/orders` sur le kernel, avec une **clé d'idempotence** dérivée de la référence métier — relancer un checkout ne crée jamais un second encaissement.
 *   **Boutique (Shop)** : Paiement des commandes d'articles d'art.
 *   **Événements** : Réservation et paiement de billets pour des vernissages ou expositions.
-*   **Callbacks** : Réception automatique des notifications de succès/échec de paiement.
+*   **Abonnements** : Paiement des forfaits artistes.
+*   **Callbacks** : `POST /api/payment/callback` reçoit les notifications du kernel. ⚠️ Cet endpoint est **public et son contenu n'est jamais cru sur parole** : statut et montant sont systématiquement reconfirmés auprès du kernel (`POST /api/payments/orders/{id}/refresh`) avant tout effet de bord. Un callback forgé est sans effet.
+*   **Rattrapage** : un scheduler rafraîchit les paiements restés `PENDING` (callback perdu).
+*   **Retraits (payout)** : indisponibles — le kernel n'expose pas encore d'endpoint de décaissement.
 
 ### 🎨 Gestion Artistique
 *   **Artwork** : Gestion des collections et des images d'œuvres.
@@ -139,13 +145,23 @@ spring:
 jwt:
   secret: votre_cle_secrete_de_32_caracteres_minimum
 
+ksm:
+  kernel:
+    base-url: https://kernel-core.yowyob.com/kernel-api
+    client-id: votre_client_id
+    api-key: votre_api_key
+    tenant-id: votre_tenant_id
+
 app:
-  payment:
-    payment:
-      app-username: votre_payment_user
-      app-password: votre_payment_password
   frontend-url: http://localhost:3000
+  # URL publique du backend : le kernel l'utilise pour notifier les paiements.
+  backend-url: http://localhost:8090
+  payment:
+    provider: MYCOOLPAY   # MYCOOLPAY (Mobile Money) | STRIPE (carte)
+    method: MOBILE_MONEY  # MOBILE_MONEY | CARD
 ```
+
+> Aucun identifiant PSP n'est configuré ici : les secrets des fournisseurs de paiement vivent **dans le kernel**, jamais dans YowPainter.
 
 ### Lancement
 ```bash

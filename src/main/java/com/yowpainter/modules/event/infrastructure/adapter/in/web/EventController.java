@@ -204,7 +204,7 @@ public class EventController {
                 .orElseThrow(() -> new IllegalArgumentException("Artiste non trouve"))
                 .getSlug();
 
-        String paymentReference = paymentService.initiateMobileMoneyPayment(
+        var result = paymentService.initiatePayment(
                 id,
                 "RESERVATION",
                 event.getTicketPrice(),
@@ -213,7 +213,14 @@ public class EventController {
                 phoneNumber
         );
 
-        return ResponseEntity.ok(Map.of("paymentReference", paymentReference));
+        Map<String, String> payload = new java.util.HashMap<>();
+        payload.put("paymentReference", result.kernelOrderId());
+        payload.put("paymentId", String.valueOf(result.paymentId()));
+        payload.put("status", result.status());
+        if (result.redirectUrl() != null) {
+            payload.put("redirectUrl", result.redirectUrl());
+        }
+        return ResponseEntity.ok(payload);
     }
 
     @GetMapping("/events/{id}/reservations")

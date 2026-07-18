@@ -72,6 +72,8 @@ public class EventService {
                 .startDateTime(request.getStartDateTime() != null ? request.getStartDateTime().atZone(java.time.ZoneOffset.UTC).toLocalDateTime() : null)
                 .endDateTime(request.getEndDateTime() != null ? request.getEndDateTime().atZone(java.time.ZoneOffset.UTC).toLocalDateTime() : null)
                 .location(request.getLocation())
+                .latitude(request.getLatitude())
+                .longitude(request.getLongitude())
                 .type(request.getType())
                 .maxCapacity(request.getMaxCapacity())
                 .ticketPrice(request.getTicketPrice())
@@ -468,6 +470,8 @@ public class EventService {
         event.setStartDateTime(request.getStartDateTime() != null ? request.getStartDateTime().atZone(java.time.ZoneOffset.UTC).toLocalDateTime() : null);
         event.setEndDateTime(request.getEndDateTime() != null ? request.getEndDateTime().atZone(java.time.ZoneOffset.UTC).toLocalDateTime() : null);
         event.setLocation(request.getLocation());
+        event.setLatitude(request.getLatitude());
+        event.setLongitude(request.getLongitude());
         event.setMaxCapacity(request.getMaxCapacity());
         event.setTicketPrice(request.getTicketPrice());
 
@@ -653,6 +657,8 @@ public class EventService {
                 .startDateTime(event.getStartDateTime() != null ? event.getStartDateTime().toInstant(java.time.ZoneOffset.UTC) : null)
                 .endDateTime(event.getEndDateTime() != null ? event.getEndDateTime().toInstant(java.time.ZoneOffset.UTC) : null)
                 .location(event.getLocation())
+                .latitude(event.getLatitude())
+                .longitude(event.getLongitude())
                 .type(event.getType())
                 .maxCapacity(event.getMaxCapacity())
                 .reservedCount(event.getReservedCount())

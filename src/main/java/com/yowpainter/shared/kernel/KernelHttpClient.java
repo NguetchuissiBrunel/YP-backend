@@ -76,6 +76,14 @@ public class KernelHttpClient {
         return withAccessToken(accessToken, () -> post(path, body, responseType, organizationId));
     }
 
+    public <T> T put(String path, Object body, Class<T> responseType, UUID organizationId) {
+        return exchange("PUT", path, body, responseType, organizationId);
+    }
+
+    public <T> T put(String path, Object body, Class<T> responseType, UUID organizationId, String accessToken) {
+        return withAccessToken(accessToken, () -> put(path, body, responseType, organizationId));
+    }
+
     public <T> T getWithQuery(String path, Map<String, String> queryParams, Class<T> responseType, UUID organizationId, String accessToken) {
         return withAccessToken(accessToken, () -> getWithQuery(path, queryParams, responseType, organizationId));
     }
@@ -223,6 +231,55 @@ public class KernelHttpClient {
 
     public <T> List<T> getRawList(String path, Class<T> elementType, UUID organizationId) {
         return parseRawListResponse(exchangeRaw("GET", path, null, organizationId), elementType);
+    }
+
+    // -----------------------------------------------------------------------
+    // Variantes "raw" pour objet unique.
+    //
+    // Certains controleurs du kernel ne wrappent PAS leur reponse dans
+    // ApiResponse et renvoient directement le corps metier (ex: le module
+    // billing /api/paiement renvoie un PaymentView brut). Passer par
+    // parseResponse() sur ces endpoints echoue systematiquement : le JSON n'a
+    // pas de champ "success", il vaut donc false par defaut et le client leve
+    // "Kernel request failed" alors que le HTTP est 200.
+    //
+    // A n'utiliser que pour ces endpoints-la ; les endpoints wrappes
+    // (blockchain, /api/payments/orders, ...) doivent rester sur post/get/put.
+    // -----------------------------------------------------------------------
+
+    public <T> T postRaw(String path, Object body, Class<T> responseType, UUID organizationId) {
+        return parseRawResponse(exchangeRaw("POST", path, body, organizationId), responseType);
+    }
+
+    public <T> T postRaw(String path, Object body, Class<T> responseType, UUID organizationId, String accessToken) {
+        return withAccessToken(accessToken, () -> postRaw(path, body, responseType, organizationId));
+    }
+
+    public <T> T putRaw(String path, Object body, Class<T> responseType, UUID organizationId) {
+        return parseRawResponse(exchangeRaw("PUT", path, body, organizationId), responseType);
+    }
+
+    public <T> T putRaw(String path, Object body, Class<T> responseType, UUID organizationId, String accessToken) {
+        return withAccessToken(accessToken, () -> putRaw(path, body, responseType, organizationId));
+    }
+
+    public <T> T getRaw(String path, Class<T> responseType, UUID organizationId) {
+        return parseRawResponse(exchangeRaw("GET", path, null, organizationId), responseType);
+    }
+
+    public <T> T getRaw(String path, Class<T> responseType, UUID organizationId, String accessToken) {
+        return withAccessToken(accessToken, () -> getRaw(path, responseType, organizationId));
+    }
+
+    private <T> T parseRawResponse(String body, Class<T> responseType) {
+        if (body == null || body.isBlank()) {
+            throw new KernelClientException("Empty kernel response body", null, null);
+        }
+        try {
+            return objectMapper.readValue(body, responseType);
+        } catch (Exception ex) {
+            throw new KernelClientException("Unable to parse kernel raw response: " + ex.getMessage(), null, null);
+        }
     }
 
     private String buildUri(String path, Map<String, String> queryParams) {

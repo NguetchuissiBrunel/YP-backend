@@ -3,7 +3,7 @@ sequenceDiagram
     participant AC as AdminController
     participant PS as ProvisioningService
     participant K as Kernel
-    participant F as Flyway
+    participant F as Liquibase
 
     A->>AC: POST /artists/{id}/approve + MFA
     AC->>PS: provisionArtist()

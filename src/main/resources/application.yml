@@ -42,7 +42,7 @@ spring:
         format_sql: true
 
   liquibase:
-    enabled: false
+    enabled: true
 
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
@@ -110,6 +110,10 @@ ksm:
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
 
+  # URL publique du backend : le kernel l'utilise pour notifier l'issue d'un
+  # paiement sur /api/payment/callback. Doit etre joignable depuis le kernel.
+  backend-url: ${BACKEND_URL:http://localhost:8090}
+
   artwork:
     video:
       max-size: 52428800
@@ -117,7 +121,13 @@ app:
       allowed-mime-types: video/mp4,video/quicktime,video/webm,video/ogg
       max-count: 3
 
-  # Un nouveau fournisseur de paiement via le Kernel sera configuré ici prochainement.
+  # Paiement : delegue au module billing du kernel core (POST /api/payments/orders).
+  # Le backend n'integre plus aucun PSP en direct — le kernel pilote MyCoolPay/Stripe.
+  payment:
+    # MYCOOLPAY (Mobile Money) | STRIPE (carte)
+    provider: ${PAYMENT_PROVIDER:MYCOOLPAY}
+    # MOBILE_MONEY | CARD
+    method: ${PAYMENT_METHOD:MOBILE_MONEY}
 
 # ======================================================
 # SWAGGER

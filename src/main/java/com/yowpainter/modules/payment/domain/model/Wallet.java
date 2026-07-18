@@ -37,4 +37,18 @@ public class Wallet {
     @UpdateTimestamp
     @Column(name = "last_updated_at")
     private LocalDateTime lastUpdatedAt;
+
+    @Column(name = "blockchain_wallet_id")
+    private UUID blockchainWalletId;
+
+    @Column(name = "blockchain_public_key")
+    private String blockchainPublicKey;
+
+    @Column(name = "blockchain_private_key")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String blockchainPrivateKey;
+
+    @Column(name = "blockchain_fingerprint")
+    private String blockchainFingerprint;
+
 }

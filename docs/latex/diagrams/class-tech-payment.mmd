@@ -1,44 +1,53 @@
 classDiagram
     class PaymentService {
         +initiatePayment()
-        +handleCallback()
-        +verifyTransaction()
+        +processSuccessfulPayment()
+        +processFailedPayment()
+        -verifyPaymentWithKernel()
     }
 
     class WalletService {
         +credit()
         +debit()
         +getBalance()
+        -scheduleBlockchainAnchoring() afterCommit
     }
 
     class PaymentPollingService {
-        Scheduled backup statut PaymentProvider
+        Scheduled : refresh des paiements PENDING
     }
 
     class PayoutService {
-        +withdraw() via PaymentProvider
+        Indisponible : pas de decaissement kernel
     }
 
-    class PaymentProviderClient {
-        +getToken()
-        +collect()
-        +getTransactionStatus()
-        +withdraw()
+    class KernelPaymentOrderPort {
+        <<interface>>
+        +initiatePayment()
+        +refreshPayment()
+        +getPayment()
     }
 
-    class PaymentProviderConfig {
-        app-username
-        app-password
-        callback-url
+    class KernelPaymentOrderHttpAdapter {
+        POST /api/payments/orders
+        POST /api/payments/orders/id/refresh
+    }
+
+    class KernelWalletPort {
+        <<interface>>
+        +createWallet()
+        +submitTransaction()
+        +signPayload()
     }
 
     class PaymentController {
-        POST /callback webhook
+        POST /callback (public, contenu non fiable)
     }
 
     PaymentController --> PaymentService
-    PaymentService --> PaymentProviderClient
-    PaymentPollingService --> PaymentProviderClient
-    PayoutService --> PaymentProviderClient
-    PaymentProviderConfig --> PaymentProviderClient
+    PaymentService --> KernelPaymentOrderPort
+    PaymentPollingService --> KernelPaymentOrderPort
+    KernelPaymentOrderHttpAdapter ..|> KernelPaymentOrderPort
     PaymentService --> WalletService
+    PayoutService --> WalletService
+    WalletService --> KernelWalletPort

@@ -2,18 +2,25 @@ sequenceDiagram
     participant B as Acheteur
     participant SC as ShopController
     participant PS as PaymentService
-    participant CP as PaymentProvider
-    participant K as Kernel
+    participant K as Kernel (billing)
+    participant PSP as PSP MyCoolPay/Stripe
     participant W as WalletService
 
     B->>SC: POST /orders
     B->>SC: POST /orders/{id}/checkout + phone
     SC->>PS: initiatePayment()
-    PS->>CP: collect USSD push
-    CP-->>PS: reference pending
-    CP-->>PS: POST /payment/callback
-    PS->>CP: verifyTransaction()
+    PS->>PS: Payment PENDING + cle d'idempotence
+    PS->>K: POST /api/payments/orders
+    K->>PSP: encaissement (USSD push / redirect)
+    K-->>PS: PaymentOrder (id, status, redirectUrl)
+    SC-->>B: paymentReference + redirectUrl
+
+    PSP-->>K: callback PSP signe
+    K-->>PS: POST /api/payment/callback (notification NON fiable)
+    PS->>K: POST /api/payments/orders/{id}/refresh
+    Note over PS,K: Le kernel fait foi : statut ET montant re-verifies
+    K-->>PS: status SUCCESS + amount
     PS->>K: confirmOrder()
-    PS->>W: credit net amount
+    PS->>W: credit net (commission deduite)
+    Note over W: Ancrage blockchain APRES commit
     PS->>K: notification
-    SC-->>B: Order PAID

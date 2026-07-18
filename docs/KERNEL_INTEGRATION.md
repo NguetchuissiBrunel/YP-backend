@@ -48,8 +48,32 @@ Le backend YowPainter est **toujours** un consommateur du kernel (auth, org, com
 
 ### Commerce
 - Produits/commandes délégués au kernel (`KernelCommerceService`)
-- Paiement PaymentProvider local → à succès : `POST /api/sales/orders/{id}/confirm` sur le kernel
+- À succès du paiement : `POST /api/sales/orders/{id}/confirm` sur le kernel
 - Événements Kafka `SALES_ORDER_CONFIRMED` / `SALES_ORDER_CANCELLED` → sync statut commande locale
+
+### Paiement (module billing du kernel)
+
+YowPainter **n'intègre aucun PSP en direct** : l'encaissement est délégué au kernel, qui pilote MyCoolPay (Mobile Money) et Stripe (carte). Les secrets PSP vivent dans le kernel.
+
+| Étape | Appel |
+|---|---|
+| Initier | `POST /api/payments/orders` — `InitiatePaymentRequest` avec `idempotencyKey` dérivée de la référence métier (`yowpainter-<type>-<referenceId>`) |
+| Vérifier | `POST /api/payments/orders/{id}/refresh` — **seule source de vérité** sur l'issue d'un paiement |
+| Consulter | `GET /api/payments/orders/{id}` |
+
+Adaptateur : `KernelPaymentOrderHttpAdapter` (port `KernelPaymentOrderPort`).
+
+**Authentification.** Ces endpoints sont **server-to-server** : ils s'authentifient avec les en-têtes `X-Client-Id` / `X-Api-Key` que `KernelHttpClient` envoie sur chaque appel. **Aucun jeton porteur n'est requis** — vérifié en direct (`X-Client-Id`+`X-Api-Key` seuls → 500 « amount is required », donc l'auth passe ; sans en-têtes → 401). On ne déclenche donc **jamais** de login admin bootstrap sur le chemin de paiement : un `/api/auth/login` sur le chemin critique était fragile (un hoquet de la gateway le faisait échouer et cassait tout le paiement). Le bearer de l'acheteur, s'il est présent dans le `RequestContext` pendant un checkout, est transmis en bonus mais n'est pas nécessaire.
+
+**Règle de sécurité.** `POST /api/payment/callback` est public (l'émetteur ne s'authentifie pas auprès de nous). Son contenu n'est **jamais** une preuve de paiement : il ne sert qu'à désigner la référence à re-vérifier. `PaymentService` reconfirme systématiquement statut **et** montant via `refresh` avant tout effet de bord (commande payée, wallet crédité, facture émise). Un kernel injoignable ne valide jamais un paiement.
+
+**Rattrapage.** `PaymentPollingService` rafraîchit toutes les 10 min les paiements `PENDING` de plus de 5 min, pour le cas d'un callback perdu.
+
+**Décaissement.** Aucun endpoint kernel de payout : `PayoutService` refuse la demande **avant** tout mouvement (un débit suivi d'un rollback laissait auparavant un retrait fantôme ancré sur la blockchain).
+
+> ⚠️ Piège swagger. Les endpoints `/api/paiement` (billing legacy) renvoient un `PaymentView` **brut**, sans enveloppe `ApiResponse` — contrairement à `/api/payments/orders` et `/api/v1/blockchain/*` qui sont enveloppés. D'où les variantes `postRaw`/`putRaw`/`getRaw` de `KernelHttpClient`, à n'utiliser **que** pour `/api/paiement`.
+
+> ⚠️ Piège swagger (bis). Le schéma `WalletResponse` du swagger kernel est une **collision de noms** springdoc entre le wallet billing (`ownerId`, `balance`) et le wallet blockchain (`organizationId`, `label`, `publicKey`, `fingerprint`, `active`). `KernelWalletResponseDto` suit le **vrai** contrat blockchain, pas le swagger : ne pas l'« aligner » sur ce dernier.
 
 ### Fichiers
 - `POST /api/artworks/images/upload` (multipart) → `POST /api/files` kernel

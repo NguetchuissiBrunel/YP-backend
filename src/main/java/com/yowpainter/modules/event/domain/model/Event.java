@@ -40,6 +40,14 @@ public class Event {
 
     private String location;
 
+    /** Latitude WGS84 du lieu (nullable : localisation optionnelle). */
+    @Column(name = "latitude")
+    private Double latitude;
+
+    /** Longitude WGS84 du lieu (nullable). */
+    @Column(name = "longitude")
+    private Double longitude;
+
     @Enumerated(EnumType.STRING)
     private EventType type;
 

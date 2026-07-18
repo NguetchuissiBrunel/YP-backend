@@ -30,7 +30,7 @@ souhaitant comprendre, maintenir ou faire évoluer la plateforme.
   \label{tab:perimetre}
   \begin{tabular}{@{}lp{10cm}@{}}
     \toprule
-    \textbf{Inclus} & Authentification JWT, multi-tenancy, œuvres, boutique, événements, paiements PaymentProvider, wallet, abonnements, chat WebSocket, notifications, recherche, administration \\
+    \textbf{Inclus} & Authentification JWT, multi-tenancy, œuvres, boutique, événements, paiements délégués au \kernel, wallet, abonnements, chat WebSocket, notifications, recherche, administration \\
     \midrule
     \textbf{Exclus} & Frontend Next.js, interface utilisateur Kernel RT-Comops, infrastructure réseau (load balancers, CDN) \\
     \bottomrule
@@ -52,8 +52,8 @@ souhaitant comprendre, maintenir ou faire évoluer la plateforme.
     Sécurité           & Spring Security 7.0, OAuth2 Resource Server, JWT RS256 \\
     Persistance        & Spring Data JPA, Hibernate 6, PostgreSQL 18 \\
     Multi-tenancy      & Schema-per-tenant (Hibernate) \\
-    Migrations         & Flyway 11.0.0 \\
-    Paiements          & PaymentProvider (Mobile Money MTN, Orange, MoMo Pay) \\
+    Migrations         & Liquibase \\
+    Paiements          & \kernel{} module billing — MyCoolPay (Mobile Money), Stripe (carte) \\
     Messagerie         & WebSocket STOMP (Spring) \\
     Événements         & Apache Kafka (optionnel, sync Kernel) \\
     Documentation API  & OpenAPI 3 / SpringDoc 3.0.0 \\

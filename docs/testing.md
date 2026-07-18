@@ -142,7 +142,7 @@ Le backend gère et traduit précisément les codes d'erreur du Kernel dans le c
     *   Une organisation Kernel a été créée et activée. Sur le **Swagger KSM Kernel Core**, vous pouvez appeler `GET /api/v1/organizations/{organizationId}` pour vérifier sa validité.
 2.  **Vérification de la base de données (Multi-Tenant) :**
     *   Dans PostgreSQL, vérifiez qu'un nouveau schéma nommé `tenant_<organization_id>` (ex: `tenant_58aa299f-b7f2-4049-a6b2-0e738f1df2e0`) a été créé.
-    *   Vérifiez que toutes les tables (comme `artwork`, `order`, etc.) y ont été créées automatiquement par les migrations Flyway.
+    *   Vérifiez que toutes les tables (comme `artwork`, `order`, etc.) y ont été créées automatiquement par les migrations Liquibase (`db/changelog/db.changelog-tenant.yaml`).
 
 ---
 

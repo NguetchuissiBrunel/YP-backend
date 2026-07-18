@@ -19,13 +19,13 @@
   Kernel & Plateforme RT-Comops fournissant IAM, commerce, fichiers et notifications \\
   ClientApplication & Application enregistrée dans le Kernel avec client-id et api-key \\
   Provisioning & Création automatique de l'organisation Kernel et du schéma tenant \\
-  PaymentProvider & Passerelle de paiement Mobile Money (MTN, Orange, MoMo Pay) au Cameroun \\
-  USSD Push & Notification de paiement envoyée sur le téléphone de l'acheteur \\
+  MyCoolPay / Stripe & PSP pilotés par le Kernel (Mobile Money / carte) — YowPainter ne les appelle jamais en direct \\
+  Idempotency key & Clé rendant un encaissement rejouable sans double débit \\
   Port (hexagonal) & Interface définissant un contrat entre le domaine et l'infrastructure \\
   Adaptateur & Implémentation concrète d'un port (JPA, HTTP, etc.) \\
   JWKS & JSON Web Key Set — clés publiques pour validation JWT RS256 \\
   STOMP & Protocole de messagerie sur WebSocket \\
-  Flyway & Outil de migration de schéma de base de données versionné \\
+  Liquibase & Outil de migration de schéma de base de données versionné \\
   \bottomrule
 \end{longtable}
 
@@ -94,7 +94,7 @@
     artwork, artwork\_image, artwork\_video & Œuvres et médias \\
     artwork\_like, artwork\_comment & Interactions sociales \\
     product, order, order\_item & Commerce \\
-    payment & Transactions PaymentProvider \\
+    payment & Ordres de paiement (référence kernel + idempotency key) \\
     event, reservation, ticket & Événements et billets \\
     news & Actualités \\
     subscription & Abonnement artiste \\
@@ -110,7 +110,7 @@
   \item Définir \texttt{KSM\_KERNEL\_AUTO\_PROVISION\_ARTISTS=false} pour validation manuelle
   \item Configurer credentials bootstrap admin + MFA
   \item Vérifier connexion PostgreSQL et droits création schémas
-  \item Configurer PaymentProvider production (callback URL publique)
+  \item Renseigner \texttt{BACKEND\_URL} (callback URL publique joignable par le Kernel)
   \item Configurer SMTP pour e-mails transactionnels
   \item Activer Kafka si synchronisation commandes requise
   \item Sécuriser routes chat (\texttt{permitAll} → authentification requise)

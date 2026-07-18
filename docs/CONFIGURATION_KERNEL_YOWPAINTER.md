@@ -146,7 +146,15 @@ PORT=8090
 # CORS + emails
 FRONTEND_URL=http://localhost:3000
 
-# Compte admin kernel (inscription artiste/admin, provision rôles)
+# URL publique du backend : le kernel l'utilise comme callbackUrl de paiement.
+# En local, le kernel doit pouvoir joindre cette URL (sinon : tunnel type ngrok).
+BACKEND_URL=http://localhost:8090
+
+# Paiement — le kernel pilote le PSP ; aucun secret PSP ici.
+PAYMENT_PROVIDER=MYCOOLPAY   # MYCOOLPAY (Mobile Money) | STRIPE (carte)
+PAYMENT_METHOD=MOBILE_MONEY  # MOBILE_MONEY | CARD
+
+# Compte admin kernel (inscription artiste/admin, provision rôles, paiements)
 KSM_KERNEL_BOOTSTRAP_ADMIN_USERNAME=platform-admin
 KSM_KERNEL_BOOTSTRAP_ADMIN_PASSWORD=PlatformAdmin!123
 ```
@@ -162,7 +170,12 @@ Les variables ci-dessus alimentent `ksm.kernel.*` dans `src/main/resources/appli
 | `KSM_KERNEL_API_KEY` | `ksm.kernel.api-key` | Header `X-Api-Key` |
 | `KSM_KERNEL_TENANT_ID` | `ksm.kernel.tenant-id` | Header `X-Tenant-Id` |
 | `KSM_KERNEL_JWK_SET_URI` | `ksm.kernel.jwk-set-uri` | Validation JWT RS256 |
-| `KSM_KERNEL_BOOTSTRAP_ADMIN_*` | `ksm.kernel.bootstrap-admin-*` | Session admin pour opérations privilégiées |
+| `KSM_KERNEL_BOOTSTRAP_ADMIN_*` | `ksm.kernel.bootstrap-admin-*` | Session admin pour opérations privilégiées (dont paiements) |
+| `BACKEND_URL` | `app.backend-url` | `callbackUrl` transmise au kernel lors d'un paiement |
+| `PAYMENT_PROVIDER` | `app.payment.provider` | `MYCOOLPAY` \| `STRIPE` |
+| `PAYMENT_METHOD` | `app.payment.method` | `MOBILE_MONEY` \| `CARD` |
+
+> Les identifiants des PSP (MyCoolPay, Stripe) se configurent **dans le kernel**, jamais dans YowPainter.
 
 ### 3.3 Démarrage
 

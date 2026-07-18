@@ -58,19 +58,22 @@ public class SubscriptionService {
         subscriptionRepository.save(sub);
     }
 
-    @Transactional
-    public String initiateSubscriptionUpgrade(String email, SubscriptionPlan plan, String phoneNumber) {
+    /**
+     * Pas de {@code @Transactional} ici : PaymentService doit positionner le
+     * contexte d'organisation avant d'ouvrir sa transaction tenant.
+     */
+    public com.yowpainter.modules.payment.application.service.PaymentInitiationResult initiateSubscriptionUpgrade(
+            String email, SubscriptionPlan plan, String phoneNumber) {
         Artist artist = artistRepository.findByEmail(email).orElseThrow();
-        String tenantId = artist.getSlug();
-        
-        // On utilise l'ID de l'artiste comme référence. 
-        // Note: Si l'utilisateur fait plusieurs tentatives, cela écrasera la précédente dans le polling
-        return paymentService.initiateMobileMoneyPayment(
-                artist.getId(), 
-                "SUBSCRIPTION", 
-                plan.getPrice(), 
-                tenantId, 
-                email, 
+
+        // L'ID de l'artiste sert de reference : la cle d'idempotence derivee
+        // garantit qu'une relance ne cree pas un second encaissement.
+        return paymentService.initiatePayment(
+                artist.getId(),
+                "SUBSCRIPTION",
+                plan.getPrice(),
+                artist.getSlug(),
+                email,
                 phoneNumber
         );
     }

@@ -1,3 +1,6 @@
 databaseChangeLog:
   - include:
       file: db/changelog/public/V1__initial_schema.sql
+  - include:
+      file: db/changelog/public/V2__add_blockchain_wallet.sql
+

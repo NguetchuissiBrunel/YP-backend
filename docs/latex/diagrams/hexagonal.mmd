@@ -10,11 +10,11 @@ flowchart TB
 
     subgraph Infrastructure["Couche INFRASTRUCTURE"]
         IN[Adaptateurs IN<br/>REST Controllers, DTOs, WebSocket]
-        OUT[Adaptateurs OUT<br/>JPA, PaymentProvider, Kernel HTTP, Mail]
+        OUT[Adaptateurs OUT<br/>JPA, Kernel HTTP (billing, wallet), Mail]
     end
 
     PG[(PostgreSQL)]
-    EXT[Kernel / PaymentProvider]
+    EXT[Kernel RT-Comops<br/>billing, wallet, blockchain]
 
     IN --> SVC
     SVC --> MODEL

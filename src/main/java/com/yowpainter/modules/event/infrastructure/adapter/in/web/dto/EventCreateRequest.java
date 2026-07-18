@@ -35,6 +35,11 @@ public class EventCreateRequest {
 
     private String location;
 
+    /** Coordonnées du lieu (optionnelles, issues de la carte / recherche d'adresse). */
+    private Double latitude;
+
+    private Double longitude;
+
     @NotNull(message = "Le type d'evenement est requis")
     private EventType type;
 

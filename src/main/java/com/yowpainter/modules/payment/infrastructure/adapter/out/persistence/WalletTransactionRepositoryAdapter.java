@@ -19,6 +19,11 @@ public class WalletTransactionRepositoryAdapter implements WalletTransactionRepo
     }
 
     @Override
+    public java.util.Optional<WalletTransaction> findById(UUID id) {
+        return jpaRepository.findById(id);
+    }
+
+    @Override
     public java.util.List<WalletTransaction> findByWalletIdOrderByCreatedAtDesc(UUID walletId) {
         return jpaRepository.findByWalletIdOrderByCreatedAtDesc(walletId);
     }

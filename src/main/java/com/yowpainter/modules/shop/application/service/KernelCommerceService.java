@@ -238,6 +238,36 @@ public class KernelCommerceService {
         throw new IllegalArgumentException("Commande non trouvée");
     }
 
+    /**
+     * Retrouve le slug de l'artiste proprietaire d'une commande.
+     * <p>
+     * Le checkout ne connait que l'id de commande, alors que le paiement doit
+     * etre rattache a l'organisation kernel de l'artiste (c'est elle qui porte
+     * le schema tenant et le portefeuille a crediter).
+     * </p>
+     */
+    @Transactional(readOnly = true)
+    public String getArtistSlugForOrder(UUID orderId) {
+        List<Artist> activeArtists = artistRepository.findByStatus("ACTIVE");
+        for (Artist artist : activeArtists) {
+            if (artist.getOrganizationId() == null) continue;
+            try {
+                OrganizationContext.setOrganizationId(artist.getOrganizationId());
+                boolean found = tenantTransactionExecutor.execute(() -> orderRepository.findById(orderId)
+                        .filter(order -> artist.getOrganizationId().equals(order.getOrganizationId()))
+                        .isPresent());
+                if (found) {
+                    return artist.getSlug();
+                }
+            } catch (Exception e) {
+                // Ignore schema issues and keep searching
+            } finally {
+                OrganizationContext.clear();
+            }
+        }
+        throw new IllegalArgumentException("Commande non trouvée");
+    }
+
     @Transactional(readOnly = true)
     public List<ProductResponse> getInventory(String artistEmail) {
         Artist artist = artistRepository.findByEmail(artistEmail)

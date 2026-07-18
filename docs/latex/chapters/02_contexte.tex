@@ -25,7 +25,7 @@ YowPainter est une \emph{ClientApplication} autorisée.
     Administrateur & \texttt{ROLE\_ADMIN} & Valider artistes, gérer tenants, statistiques, logs \\
     Frontend & Système client & Consommer l'API REST/WebSocket (JWT utilisateur) \\
     \kernel & Système IAM/Commerce & Auth, org, produits, commandes, fichiers, notifications \\
-    PaymentProvider & PSP Mobile Money & Collecte et retrait Mobile Money (XAF) \\
+    PSP (MyCoolPay, Stripe) & Encaissement & Pilotés \emph{par le \kernel} — jamais appelés par YowPainter \\
     PostgreSQL & SGBD & Persistance multi-schémas \\
     Kafka & Bus événements & Sync statuts commandes (optionnel) \\
     \bottomrule

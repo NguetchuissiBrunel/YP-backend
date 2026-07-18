@@ -40,4 +40,11 @@ public class WalletTransaction {
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @Column(name = "blockchain_tx_id")
+    private UUID blockchainTxId;
+
+    @Column(name = "blockchain_tx_hash")
+    private String blockchainTxHash;
+
 }

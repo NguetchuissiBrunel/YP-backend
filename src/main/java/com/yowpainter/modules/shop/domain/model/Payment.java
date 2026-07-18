@@ -46,15 +46,46 @@ public class Payment {
     @Column(name = "provider_reference")
     private String providerReference;
 
+    /**
+     * Identifiant de l'ordre de paiement cote kernel (PaymentOrderResponse.id).
+     * C'est la cle qui permet de reinterroger le kernel pour verifier l'issue
+     * reelle d'un paiement.
+     */
+    @Column(name = "kernel_order_id")
+    private String kernelOrderId;
+
+    /**
+     * Cle d'idempotence transmise au kernel. Stable pour un meme referenceId :
+     * un acheteur qui relance son checkout ne cree pas un second encaissement.
+     */
+    @Column(name = "idempotency_key", unique = true)
+    private String idempotencyKey;
+
+    /** MYCOOLPAY | STRIPE */
+    @Column(name = "provider")
+    private String provider;
+
+    /** MOBILE_MONEY | CARD */
+    @Column(name = "method")
+    private String method;
+
+    /** URL de redirection PSP renvoyee par le kernel, le cas echeant. */
+    @Column(name = "redirect_url", length = 1024)
+    private String redirectUrl;
+
     @Column(name = "phone_number")
     private String phoneNumber;
 
     @Column(name = "tenant_id")
     private String tenantId;
 
+    @Column(name = "invoice_id")
+    private UUID invoiceId;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
 
     @UpdateTimestamp
     @Column(name = "updated_at")

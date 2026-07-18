@@ -20,6 +20,8 @@ public class EventResponse {
     private Instant startDateTime;
     private Instant endDateTime;
     private String location;
+    private Double latitude;
+    private Double longitude;
     private EventType type;
     private int maxCapacity;
     private int reservedCount;

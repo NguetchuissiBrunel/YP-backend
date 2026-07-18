@@ -54,7 +54,7 @@ La figure~\ref{fig:uc-global} présente les cas d'utilisation principaux regroup
     1. Admin liste \texttt{GET /api/admin/artists/pending}.\\
     & 2. Admin approuve \texttt{POST /api/admin/artists/\{id\}/approve} + MFA.\\
     & 3. \texttt{KernelArtistProvisioningService} : login bootstrap, création org, plan COMMERCE, rôle ORGANIZATION\_ADMIN.\\
-    & 4. Migration Flyway du schéma tenant.\\
+    & 4. Migration Liquibase du schéma tenant.\\
     & 5. Statut artiste → \texttt{ACTIVE}. \\
     \bottomrule
   \end{tabular}
@@ -76,7 +76,7 @@ La figure~\ref{fig:uc-global} présente les cas d'utilisation principaux regroup
     \textbf{Scénario nominal} &
     1. Création commande \texttt{POST /api/shop/v1/public/\{slug\}/orders}.\\
     & 2. Checkout \texttt{POST /api/shop/orders/\{id\}/checkout?phoneNumber=...}.\\
-    & 3. \texttt{PaymentService} → PaymentProvider collect (USSD push).\\
+    & 3. \texttt{PaymentService} → \kernel \texttt{POST /api/payments/orders} (le kernel pilote le PSP).\\
     & 4. Callback \texttt{POST /api/payment/callback} confirme le paiement.\\
     & 5. Confirmation commande Kernel + crédit wallet + notification. \\
     \bottomrule
@@ -117,10 +117,10 @@ La figure~\ref{fig:uc-global} présente les cas d'utilisation principaux regroup
     \midrule
     Auth / Profil        & ✓ & ✓ & ✓ & Kernel \\
     Gestion œuvres         & ✓ &   &   &     \\
-    Boutique / Commandes   & ✓ & ✓ &   & Kernel, PaymentProvider \\
-    Événements / Billets   & ✓ & ✓ &   & PaymentProvider \\
-    Wallet / Retraits      & ✓ &   &   & PaymentProvider \\
-    Abonnements            & ✓ &   &   & PaymentProvider \\
+    Boutique / Commandes   & ✓ & ✓ &   & Kernel (commerce + billing) \\
+    Événements / Billets   & ✓ & ✓ &   & Kernel (billing) \\
+    Wallet / Solde         & ✓ &   &   & Kernel (blockchain) \\
+    Abonnements            & ✓ &   &   & Kernel (billing) \\
     Chat                   & ✓ & ✓ &   &     \\
     Validation artistes    &   &   & ✓ & Kernel \\
     Administration         &   &   & ✓ &     \\

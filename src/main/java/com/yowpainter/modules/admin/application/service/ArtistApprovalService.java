@@ -37,6 +37,7 @@ public class ArtistApprovalService {
     private final com.yowpainter.shared.tenant.TenantMigrationService tenantMigrationService;
     private final PendingProvisionSessionRepositoryPort pendingProvisionSessionRepository;
     private final KernelBootstrapAdminSession bootstrapAdminSession;
+    private final com.yowpainter.modules.payment.application.service.WalletService walletService;
 
     public List<PendingArtistResponse> listPendingArtists() {
         return artistRepository.findByStatusIn(ArtistRegistrationStatus.pendingAdminApprovalStatuses()).stream()
@@ -72,6 +73,13 @@ public class ArtistApprovalService {
             artistRepository.save(artist);
 
             runTenantMigrationSafely(provisioned.organizationId(), artist.getEmail());
+
+            try {
+                String adminToken = bootstrapAdminSession.getBootstrapAdminAccessToken();
+                walletService.createBlockchainWallet(artist, adminToken);
+            } catch (Exception ex) {
+                log.error("Erreur creation blockchain wallet pour {}: {}", artist.getEmail(), ex.getMessage());
+            }
 
             log.info("[provision] PROVISION_SUCCESS pour {} (org={}, actor={})", artist.getEmail(), provisioned.organizationId(),
                     provisioned.businessActorId());
@@ -129,6 +137,13 @@ public class ArtistApprovalService {
             artistRepository.save(artist);
 
             runTenantMigrationSafely(provisioned.organizationId(), artist.getEmail());
+
+            try {
+                String adminToken = bootstrapAdminSession.getBootstrapAdminAccessToken();
+                walletService.createBlockchainWallet(artist, adminToken);
+            } catch (Exception ex) {
+                log.error("Erreur creation blockchain wallet pour {}: {}", artist.getEmail(), ex.getMessage());
+            }
 
             // Clean up temporary MFA session
             pendingProvisionSessionRepository.deleteById(artistId);

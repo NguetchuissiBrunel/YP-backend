@@ -6,7 +6,7 @@ flowchart LR
         UC3[Publier des oeuvres]
         UC4[Gérer boutique]
         UC5[Organiser evenements]
-        UC6[Wallet / Retraits]
+        UC6[Wallet / Solde]
         UC7[Gérer abonnement]
         UC8[Acheter une oeuvre]
         UC9[Reserver un billet]
@@ -22,7 +22,7 @@ flowchart LR
     Artist((Artiste))
     Buyer((Acheteur))
     Admin((Admin))
-    PaymentProvider[PaymentProvider]
+    PSP[PSP MyCoolPay / Stripe]
     Kernel[Kernel]
 
     Artist --> UC1 & UC2 & UC3 & UC4 & UC5 & UC6 & UC7
@@ -31,6 +31,7 @@ flowchart LR
 
     UC8 & UC9 -.->|include| UC15
     UC4 -.->|include| UC16
-    UC15 --> PaymentProvider
+    UC15 --> Kernel
+    Kernel --> PSP
     UC16 --> Kernel
     UC1 & UC12 --> Kernel

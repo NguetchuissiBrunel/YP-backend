@@ -4,11 +4,11 @@ flowchart TB
     DOM[Couche Domaine<br/>Models + Ports]
     JPA[Adaptateur JPA]
     KERN[Adaptateur Kernel HTTP]
-    CAMP[Adaptateur PaymentProvider]
+    CAMP[Adaptateur Kernel Billing<br/>KernelPaymentOrderHttpAdapter]
 
     PG[(PostgreSQL)]
     KAPI[Kernel API]
-    CAPI[PaymentProvider API]
+    CAPI[Kernel Billing API<br/>/api/payments/orders]
 
     REST --> APP
     APP --> DOM

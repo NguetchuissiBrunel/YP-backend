@@ -1,3 +1,10 @@
 databaseChangeLog:
   - include:
       file: db/changelog/tenant/V1__tenant_schema.sql
+  - include:
+      file: db/changelog/tenant/V2__add_invoice.sql
+  - include:
+      file: db/changelog/tenant/V3__add_kernel_payment_order.sql
+  - include:
+      file: db/changelog/tenant/V4__add_event_geolocation.sql
+

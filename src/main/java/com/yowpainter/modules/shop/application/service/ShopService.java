@@ -115,6 +115,12 @@ public class ShopService {
         return kernelCommerceService.getOrderById(orderId);
     }
 
+    /** Slug de l'artiste proprietaire de la commande (necessaire au checkout). */
+    @Transactional(readOnly = true)
+    public String getArtistSlugForOrder(UUID orderId) {
+        return kernelCommerceService.getArtistSlugForOrder(orderId);
+    }
+
     @Transactional(readOnly = true)
     public List<ProductResponse> getInventory(String artistEmail) {
         return kernelCommerceService.getInventory(artistEmail);

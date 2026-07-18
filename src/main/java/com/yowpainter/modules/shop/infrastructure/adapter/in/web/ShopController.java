@@ -1,5 +1,6 @@
 package com.yowpainter.modules.shop.infrastructure.adapter.in.web;
 
+import com.yowpainter.modules.payment.application.service.PaymentInitiationResult;
 import com.yowpainter.modules.payment.application.service.PaymentService;
 import com.yowpainter.modules.shop.application.service.ShopService;
 import com.yowpainter.modules.shop.domain.model.OrderStatus;
@@ -79,7 +80,7 @@ public class ShopController {
 
     @PostMapping("/orders/{id}/checkout")
     @PreAuthorize("hasRole('BUYER')")
-    @Operation(summary = "Initier le paiement Mobile Money (MOMO/Orange) pour une commande")
+    @Operation(summary = "Initier le paiement d'une commande via le Kernel (Mobile Money / carte)")
     public ResponseEntity<Map<String, String>> checkoutOrder(
             @PathVariable UUID id,
             @RequestParam String phoneNumber,
@@ -87,17 +88,31 @@ public class ShopController {
         String email = authenticatedUserResolver.requireEmail(authentication);
 
         OrderResponse order = shopService.getOrderById(id);
+        // Le paiement doit etre rattache a l'organisation kernel de l'artiste,
+        // pas au schema public.
+        String artistSlug = shopService.getArtistSlugForOrder(id);
 
-        String paymentReference = paymentService.initiateMobileMoneyPayment(
+        PaymentInitiationResult result = paymentService.initiatePayment(
                 id,
                 "ORDER",
                 order.getTotalAmount(),
-                "public",
+                artistSlug,
                 email,
                 phoneNumber
         );
 
-        return ResponseEntity.ok(Map.of("paymentReference", paymentReference));
+        return ResponseEntity.ok(toPaymentPayload(result));
+    }
+
+    private Map<String, String> toPaymentPayload(PaymentInitiationResult result) {
+        Map<String, String> payload = new java.util.HashMap<>();
+        payload.put("paymentReference", result.kernelOrderId());
+        payload.put("paymentId", String.valueOf(result.paymentId()));
+        payload.put("status", result.status());
+        if (result.redirectUrl() != null) {
+            payload.put("redirectUrl", result.redirectUrl());
+        }
+        return payload;
     }
 
     @GetMapping("/orders/{id}")

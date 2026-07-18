@@ -14,8 +14,9 @@ import java.util.UUID;
 /**
  * Service de retrait (payout) vers les artistes.
  * <p>
- * L'intégration Mobile Money a été retirée.
- * Un nouveau fournisseur de paiement sera branché ici.
+ * Le kernel core expose l'<em>encaissement</em> (POST /api/payments/orders) mais
+ * aucun endpoint de <em>decaissement</em> vers un compte Mobile Money externe :
+ * le retrait reste donc indisponible tant que le kernel ne l'expose pas.
  * </p>
  */
 @Slf4j
@@ -26,7 +27,16 @@ public class PayoutService {
     private final WalletService walletService;
     private final ArtistRepositoryPort artistRepository;
 
-    @Transactional
+    /**
+     * Demande de retrait.
+     * <p>
+     * L'ancienne implementation debitait le portefeuille <em>avant</em> de lever
+     * l'exception d'indisponibilite. Le rollback annulait bien le debit en base,
+     * mais l'ancrage blockchain declenche par le debit, lui, n'etait pas
+     * reversible : chaque tentative gravait sur la chaine un retrait qui n'avait
+     * jamais eu lieu. On echoue donc desormais avant tout mouvement.
+     * </p>
+     */
     public String requestPayout(String artistEmail, BigDecimal amount) {
         Artist artist = artistRepository.findByEmail(artistEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Artiste non trouvé"));
@@ -35,22 +45,12 @@ public class PayoutService {
             throw new IllegalStateException("Numéro de retrait non configuré pour cet artiste");
         }
 
-        log.info("Payout requested for artist {} ({}), amount: {}. Payment provider not yet configured.",
+        log.info("Payout requested for artist {} ({}), amount: {} — refusé : le kernel n'expose pas encore de décaissement.",
                 artist.getArtistName(), artist.getPayoutPhone(), amount);
 
-        // 1. Débiter le portefeuille localement d'abord (Sécurité)
-        UUID payoutId = UUID.randomUUID();
-        walletService.debitWallet(
-            artist,
-            amount,
-            WalletTransactionType.WITHDRAWAL,
-            payoutId,
-            "Retrait vers " + artist.getPayoutPhone()
-        );
-
-        // 2. Envoi vers le fournisseur de paiement — à implémenter
         throw new UnsupportedOperationException(
-                "Le virement Mobile Money n'est pas encore disponible. " +
-                "Un nouveau système de paiement sera bientôt intégré.");
+                "Le retrait vers Mobile Money n'est pas encore disponible : " +
+                "le kernel core n'expose pas d'endpoint de décaissement. " +
+                "Votre solde reste acquis et sera retirable dès son ouverture.");
     }
 }

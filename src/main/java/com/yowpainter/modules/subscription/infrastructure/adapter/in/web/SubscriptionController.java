@@ -53,14 +53,22 @@ public class SubscriptionController {
 
     @PostMapping("/upgrade/checkout")
     @PreAuthorize("hasRole('ARTIST')")
-    @Operation(summary = "Initier le paiement Mobile Money pour un forfait")
+    @Operation(summary = "Initier le paiement d'un forfait via le Kernel (Mobile Money / carte)")
     public ResponseEntity<Map<String, String>> checkoutUpgrade(
             Authentication authentication,
             @RequestParam SubscriptionPlan plan,
             @RequestParam String phoneNumber) {
         String email = authenticatedUserResolver.requireEmail(authentication);
-        String paymentReference = subscriptionService.initiateSubscriptionUpgrade(email, plan, phoneNumber);
-        return ResponseEntity.ok(Map.of("paymentReference", paymentReference));
+        var result = subscriptionService.initiateSubscriptionUpgrade(email, plan, phoneNumber);
+
+        Map<String, String> payload = new java.util.HashMap<>();
+        payload.put("paymentReference", result.kernelOrderId());
+        payload.put("paymentId", String.valueOf(result.paymentId()));
+        payload.put("status", result.status());
+        if (result.redirectUrl() != null) {
+            payload.put("redirectUrl", result.redirectUrl());
+        }
+        return ResponseEntity.ok(payload);
     }
 
     @DeleteMapping("/cancel")

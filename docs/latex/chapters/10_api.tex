@@ -100,7 +100,7 @@
   POST  & /products                              & ARTIST & Créer produit \\
   GET   & /v1/public/\{slug\}/products            & Public & Catalogue artiste \\
   POST  & /v1/public/\{slug\}/orders              & BUYER  & Créer commande \\
-  POST  & /orders/\{id\}/checkout                  & BUYER  & Payer (PaymentProvider) \\
+  POST  & /orders/\{id\}/checkout                  & BUYER  & Payer (via Kernel billing) \\
   GET   & /orders/my-purchases                   & BUYER  & Mes achats \\
   GET   & /orders/my-sales                       & ARTIST & Mes ventes \\
   PATCH & /orders/\{id\}/status                    & ARTIST & Mettre à jour statut \\
@@ -136,11 +136,11 @@
     \toprule
     \textbf{Méthode} & \textbf{Path} & \textbf{Auth} & \textbf{Description} \\
     \midrule
-    POST & /api/payment/callback       & Public (webhook) & Callback PaymentProvider \\
+    POST & /api/payment/callback       & Public (webhook) & Notification Kernel — re-vérifiée avant traitement \\
     GET  & /api/payment/history        & JWT              & Historique paiements \\
     GET  & /api/wallet/balance         & ARTIST           & Solde wallet \\
     GET  & /api/wallet/transactions    & ARTIST           & Transactions \\
-    POST & /api/wallet/withdraw          & ARTIST           & Retrait Mobile Money \\
+    POST & /api/wallet/withdraw          & ARTIST           & Retrait — indisponible (pas de décaissement kernel) \\
     POST & /api/wallet/settings/payout   & ARTIST           & Config retrait \\
     \bottomrule
   \end{tabular}

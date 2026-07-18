@@ -20,9 +20,9 @@
   BF-04 & Admin & Validation manuelle des inscriptions artistes (provisioning org Kernel) \\
   BF-05 & Artist & Profil artiste avec slug unique et analytics \\
   BF-06 & Artwork & CRUD œuvres, images/vidéos, likes, commentaires \\
-  BF-07 & Shop & Catalogue produits, commandes, checkout Mobile Money \\
+  BF-07 & Shop & Catalogue produits, commandes, checkout via le \kernel \\
   BF-08 & Event & Création événements, réservations, billets QR \\
-  BF-09 & Payment & Intégration PaymentProvider (collect, callback, polling) \\
+  BF-09 & Payment & Encaissement délégué au \kernel (initiate, callback vérifié, refresh) \\
   BF-10 & Payment & Wallet artiste, commissions, retraits \\
   BF-11 & Subscription & Plans FREE/PRO/ELITE avec taux de commission différenciés \\
   BF-12 & Chat & Messagerie instantanée REST + WebSocket STOMP \\
@@ -51,7 +51,7 @@
     Maintenabilité    & Architecture hexagonale modulaire, tests unitaires par service \\
     Traçabilité       & Logs structurés, provisioning artiste tracé (\texttt{[provision]}) \\
     Portabilité       & Configuration externalisée (variables d'environnement) \\
-    Conformité        & Pas de stockage direct des credentials PaymentProvider côté client \\
+    Conformité        & Aucun credential PSP dans YowPainter : les secrets vivent dans le \kernel \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -63,7 +63,7 @@
   \item Les tokens JWT sont émis par le Kernel (RS256) ; YowPainter est un resource server.
   \item Le provisioning artiste en production requiert un code MFA bootstrap admin.
   \item Les notifications sont centralisées dans le Kernel (pas de double écriture locale).
-  \item \texttt{ddl-auto: none} — toute évolution de schéma passe par Flyway.
+  \item \texttt{ddl-auto: none} — toute évolution de schéma passe par Liquibase.
 \end{itemize}
 
 \section{Hypothèses}
@@ -72,5 +72,5 @@
   \item Le Kernel RT-Comops est déployé et accessible avant le backend YowPainter.
   \item Une \texttt{ClientApplication} \texttt{yowpainter-backend} est enregistrée dans le Kernel.
   \item PostgreSQL 18 est disponible avec droits de création de schémas.
-  \item PaymentProvider est configuré avec credentials valides pour l'environnement cible.
+  \item Le \kernel est configuré avec des credentials PSP valides pour l'environnement cible.
 \end{itemize}
