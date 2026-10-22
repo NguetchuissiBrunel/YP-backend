@@ -82,9 +82,9 @@ ksm:
 
     auto-provision-artists: ${KSM_KERNEL_AUTO_PROVISION_ARTISTS:false}
 
-    system-user-email: ${KSM_KERNEL_SYSTEM_USER_EMAIL:samuelftagat@gmail.com}
+    system-user-email: ${KSM_KERNEL_SYSTEM_USER_EMAIL:}
 
-    system-user-password: ${KSM_KERNEL_SYSTEM_USER_PASSWORD:Samuelseanpaint2*}
+    system-user-password: ${KSM_KERNEL_SYSTEM_USER_PASSWORD:}
 
     bootstrap-admin-username: ${KSM_KERNEL_BOOTSTRAP_ADMIN_USERNAME:}
 

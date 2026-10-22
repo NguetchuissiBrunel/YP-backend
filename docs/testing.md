@@ -83,7 +83,7 @@ Le test complet du système requiert l'interaction avec deux interfaces Swagger 
         ```json
         {
           "principal": "admin-samuel@yowpainter.com",
-          "password": "Samuelseanpaint2*"
+          "password": "<mot-de-passe>"
         }
         ```
     *   Copiez le `accessToken` reçu de la réponse et collez-le dans le bouton **Authorize** de Swagger (au format `Bearer <token>`).
