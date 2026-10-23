@@ -114,12 +114,42 @@ public class KernelHttpClient {
         ));
     }
 
+    /** Comme ci-dessus ; {@code publicFile} demande au noyau un fichier PUBLIC, servi sans session. */
     public <T> T uploadMultipart(
             String path,
             byte[] content,
             String fileName,
             String contentType,
             String documentType,
+            boolean publicFile,
+            Class<T> responseType,
+            UUID organizationId,
+            String accessToken
+    ) {
+        return withAccessToken(accessToken, () -> uploadMultipart(
+                path, content, fileName, contentType, documentType, publicFile, responseType, organizationId
+        ));
+    }
+
+    public <T> T uploadMultipart(
+            String path,
+            byte[] content,
+            String fileName,
+            String contentType,
+            String documentType,
+            Class<T> responseType,
+            UUID organizationId
+    ) {
+        return uploadMultipart(path, content, fileName, contentType, documentType, false, responseType, organizationId);
+    }
+
+    public <T> T uploadMultipart(
+            String path,
+            byte[] content,
+            String fileName,
+            String contentType,
+            String documentType,
+            boolean publicFile,
             Class<T> responseType,
             UUID organizationId
     ) {
@@ -136,9 +166,14 @@ public class KernelHttpClient {
         fileHeaders.setContentType(resolvedContentType);
         MultiValueMap<String, Object> multipartData = new LinkedMultiValueMap<>();
         multipartData.add("file", new HttpEntity<>(fileResource, fileHeaders));
-        String uri = documentType == null || documentType.isBlank()
-                ? path
-                : path + "?documentType=" + documentType;
+        StringBuilder query = new StringBuilder();
+        if (documentType != null && !documentType.isBlank()) {
+            query.append("documentType=").append(documentType);
+        }
+        if (publicFile) {
+            query.append(query.length() > 0 ? "&" : "").append("public=true");
+        }
+        String uri = query.length() == 0 ? path : path + "?" + query;
 
         System.out.println(">>> KERNEL MULTIPART HTTP REQUEST START >>>");
         System.out.println("URL: " + properties.baseUrl() + uri);

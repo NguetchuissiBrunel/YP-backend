@@ -29,6 +29,12 @@ public class KernelSystemUserTokenProvider {
             return current.accessToken();
         }
 
+        // Compte machine du noyau (sans MFA, adresse @yowyob.com), fourni par l'environnement : jamais
+        // de valeur par defaut dans le code, le depot est public.
+        if (isBlank(properties.systemUserEmail()) || isBlank(properties.systemUserPassword())) {
+            throw new IllegalStateException(
+                    "Compte systeme du noyau non configure : definir KSM_KERNEL_SYSTEM_USER_EMAIL et KSM_KERNEL_SYSTEM_USER_PASSWORD");
+        }
         log.info("[system-token] Requesting new system user token for {}...", properties.systemUserEmail());
         try {
             KernelAuthPort.KernelLoginResult loginResult = kernelAuthPort.login(
@@ -47,6 +53,10 @@ public class KernelSystemUserTokenProvider {
             log.error("[system-token] Error obtaining system user token: {}", ex.getMessage(), ex);
             throw new IllegalStateException("Could not authenticate system user with Kernel: " + ex.getMessage(), ex);
         }
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     public synchronized void invalidate() {

@@ -33,8 +33,8 @@ ksm:
     default-currency: XAF
     signup-platform-organization-code: yow-painter
     auto-provision-artists: true
-    system-user-email: samuelftagat@gmail.com
-    system-user-password: Samuelseanpaint2*
+    system-user-email: system-test@yowyob.com
+    system-user-password: test-system-password
     kafka:
       enabled: false
 
